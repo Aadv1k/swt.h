@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    swt_apply(image_data, &width, &height, &channels);
+    swt_apply_stroke_width_transform(image_data, &width, &height, &channels);
 
     if (!stbi_write_jpg(output_filename, width, height, channels, image_data, 100)) {
         fprintf(stderr, "ERROR: unable to write image\n");
