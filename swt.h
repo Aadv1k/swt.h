@@ -15,6 +15,7 @@
 #endif
 
 typedef struct {int x; int y;} Point;
+typedef struct {int label; int equivalentTo;} LabelInfo;
 
 #ifndef SOBEL_K_SIZE
 #define SOBEL_K_SIZE 3
@@ -108,50 +109,71 @@ void swt_apply_grayscale(uint8_t* data, int* height, int* width, int* channels) 
 }
 
 
-#define CARDINALS 4
-
-static int directions[4][2] = {
-        {0, -1},
-  {-1, 0},      {1, 0},
-        {0, 1},
+static const int CARDINALS = 8;  // Number of cardinal directions
+static const int directions[8][2] = {
+    {-1, -1}, {-1, 0}, {-1, 1},
+    {0, -1},           {0, 1},
+    {1, -1}, {1, 0}, {1, 1}
 };
 
 
 
-// OPERATING ON A THRESHOLD BINARY IMAGE
-void swt_connected_component_analysis(uint8_t* data, int* height, int* width, int* channels) {
-    assert(*channels == 1);
-    
-    // Allocate memory for an array to store visited points
-    Point* visitedPoints = (Point*)malloc(sizeof(Point) * (*width) * (*height));
-    if (visitedPoints == NULL) {
-        fprintf(stderr, "Memory allocation failed\n");
-        return;
-    }
-    
-    int numOfVisited = 0;
-    int currentLabel = 1;
+bool is_valid_point(int x, int y, int width, int height) {
+    return x >= 0 && x < width && y >= 0 && y < height;
+}
 
-    // Iterate through each pixel in the image
+bool swt_is_point_visited(Point* visitedPoints, int visitedPointCount, Point point) {
+    for (int i = 0; i < visitedPointCount; i++) {
+        if (visitedPoints[i].x == point.x && visitedPoints[i].y == point.y) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void swt_connected_component_analysis(uint8_t* data, uint8_t* componentData, int* width, int* height) {
+    int label = 1;
+
+    Point* visitedPoints = (Point*)malloc(sizeof(Point) * (*width) * (*height));
+    int visitedPointCount = 0;
+
+    // 8-connectivity neighbors
+    int directions[][2] = { {-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1} };
+
     for (int i = 0; i < *height; i++) {
         for (int j = 0; j < *width; j++) {
-            int currentIndex = (i * (*width)) + j;
-            if (data[currentIndex] > 0) {
-                // Store the coordinates of the visited pixel
-                visitedPoints[numOfVisited].y = i;
-                visitedPoints[numOfVisited].x = j;
-                numOfVisited++;
+            int currentIndex = i * (*width) + j;
 
-                // Assign a label to the connected component
-                data[currentIndex] = currentLabel;
-                currentLabel++;
+            // Check if the pixel is background or already visited
+            if (data[currentIndex] == 0 || swt_is_point_visited(visitedPoints, visitedPointCount, (Point){j, i})) {
+                continue;
             }
+
+            data[currentIndex] = label;
+            visitedPoints[visitedPointCount++] = (Point){j, i};
+
+            // Queue-based approach to label connected components
+            for (int q = 0; q < visitedPointCount; q++) {
+                Point currentPoint = visitedPoints[q];
+                for (int k = 0; k < 8; k++) {
+                    int xx = currentPoint.x + directions[k][1];
+                    int yy = currentPoint.y + directions[k][0];
+                    int neighborIndex = yy * (*width) + xx;
+
+                    if (is_valid_point(xx, yy, *width, *height) && data[neighborIndex] != 0 && !swt_is_point_visited(visitedPoints, visitedPointCount, (Point){xx, yy})) {
+                        data[neighborIndex] = label;
+                        visitedPoints[visitedPointCount++] = (Point){xx, yy};
+                    }
+                }
+            }
+
+            label++;
         }
     }
 
-    // Free the memory allocated for visitedPoints
     free(visitedPoints);
 }
+
 
 void swt_apply_threshold(uint8_t* data, int* height, int* width, int* channels, const int threshold) {
     for (int y = 0; y < *height; y++) {
@@ -176,10 +198,13 @@ SWTDEF void swt_apply_stroke_width_transform(uint8_t* data, int* height, int* wi
   swt_apply_threshold(grayscaleImage, width, height, channels, 128);
   //swt_apply_sobel_operator(grayscaleImage, width, height, channels);
 
-  swt_connected_component_analysis(grayscaleImage, width, height, channels);
+  uint8_t* connectedComponentBuffer = (uint8_t*)malloc(sizeof(uint8_t) * imageSize);
+  memset(connectedComponentBuffer, 0, imageSize);
+  swt_connected_component_analysis(grayscaleImage, connectedComponentBuffer, width, height);
 
-  memcpy(data, grayscaleImage, sizeof(uint8_t) * imageSize); 
+  memcpy(data, connectedComponentBuffer, sizeof(uint8_t) * imageSize); 
   free(grayscaleImage);
+  free(connectedComponentBuffer);
 }
 
 #endif // SWT_IMPLEMENTATION
