@@ -15,8 +15,6 @@
 #endif
 
 typedef struct {int x; int y;} Point;
-typedef struct { Point *points; int numberOfPoints; } SWCharacter;
-typedef struct { SWCharacter *characters; int numCharacters; } SWCharacterArray;
 
 #ifndef SOBEL_K_SIZE
 #define SOBEL_K_SIZE 3
@@ -110,54 +108,59 @@ void swt_apply_grayscale(uint8_t* data, int* height, int* width, int* channels) 
 }
 
 
-void swt_free_character_points(SWCharacter* character) {
-  free(character->points);
-  character->numberOfPoints = 0;
-}
- 
-void swt_extract_character_from_pixel(uint8_t* grayscaleImage, int height, int width, Point loc, SWCharacter* character) {
-    bool traversing = true;
-    const int CARDINALS = 4;
+#define CARDINALS 4
 
-    character->points = (Point*)malloc(sizeof(Point) * (height * width));
-    character->numberOfPoints = 0;
+static int directions[4][2] = {
+        {0, -1},
+  {-1, 0},      {1, 0},
+        {0, 1},
+};
 
-    while (traversing) {
-      Point directions[CARDINALS];
-      directions[0].x = loc.x;
-      directions[0].y = loc.y - 1; // UP
 
-      directions[1].x = loc.x;
-      directions[1].y = loc.y + 1; // DOWN
 
-      directions[2].x = loc.x + 1;
-      directions[2].y = loc.y;     // RIGHT
+// OPERATING ON A THRESHOLD BINARY IMAGE
+void swt_connected_component_analysis(uint8_t* data, int* height, int* width, int* channels) {
+    assert(*channels == 1);
+    
+    // Allocate memory for an array to store visited points
+    Point* visitedPoints = (Point*)malloc(sizeof(Point) * (*width) * (*height));
+    if (visitedPoints == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return;
+    }
+    
+    int numOfVisited = 0;
+    int currentLabel = 1;
 
-      directions[3].x = loc.x - 1;
-      directions[3].y = loc.y;     // LEFT
+    // Iterate through each pixel in the image
+    for (int i = 0; i < *height; i++) {
+        for (int j = 0; j < *width; j++) {
+            int currentIndex = (i * (*width)) + j;
+            if (data[currentIndex] > 0) {
+                // Store the coordinates of the visited pixel
+                visitedPoints[numOfVisited].y = i;
+                visitedPoints[numOfVisited].x = j;
+                numOfVisited++;
 
-        bool isEdgePixel =
-            (grayscaleImage[directions[0].y * width + directions[0].x] == SWT_BLACK &&
-             grayscaleImage[directions[3].y * width + directions[3].x] == SWT_BLACK) ||
-            (grayscaleImage[directions[1].y * width + directions[1].x] == SWT_BLACK &&
-             grayscaleImage[directions[2].y * width + directions[2].x] == SWT_BLACK);
-
-        if (isEdgePixel) {
-            character->points[character->numberOfPoints].x = loc.x;
-            character->points[character->numberOfPoints].y = loc.y;
-            character->numberOfPoints++;
-            
-            loc = directions[0];
-
-            bool alreadyVisited = false;
-            for (int i = 0; i < character->numberOfPoints - 1; i++) {
-                if (character->points[i].x == loc.x && character->points[i].y == loc.y) {
-                    alreadyVisited = true;
-                    break;
-                }
+                // Assign a label to the connected component
+                data[currentIndex] = currentLabel;
+                currentLabel++;
             }
-            if (alreadyVisited) {
-                traversing = false;
+        }
+    }
+
+    // Free the memory allocated for visitedPoints
+    free(visitedPoints);
+}
+
+void swt_apply_threshold(uint8_t* data, int* height, int* width, int* channels, const int threshold) {
+    for (int y = 0; y < *height; y++) {
+        for (int x = 0; x < *width; x++) {
+            int index = (y * (*width) + x) * (*channels);
+            if (data[index] > threshold) {
+                data[index] = 255;
+            } else {
+                data[index] = 0;
             }
         }
     }
@@ -170,19 +173,10 @@ SWTDEF void swt_apply_stroke_width_transform(uint8_t* data, int* height, int* wi
   memcpy(grayscaleImage, data, sizeof(uint8_t) * imageSize);
 
   swt_apply_grayscale(grayscaleImage, width, height, channels);
-  swt_apply_sobel_operator(grayscaleImage, width, height, channels);
+  swt_apply_threshold(grayscaleImage, width, height, channels, 128);
+  //swt_apply_sobel_operator(grayscaleImage, width, height, channels);
 
-  for (int i = 0; i < *height; i++) {
-    for (int j = 0; j < *width; j++) {
-      int currentIndex = (i * *width) + j;
-      if (grayscaleImage[currentIndex] == SWT_BLACK) continue;
-
-      Point location = { .x = j, .y = i };
-      SWCharacter character;
-      swt_extract_character_from_pixel(grayscaleImage, *width, *height, location, &character);
-      swt_free_character_points(&character);
-    }
-  }
+  swt_connected_component_analysis(grayscaleImage, width, height, channels);
 
   memcpy(data, grayscaleImage, sizeof(uint8_t) * imageSize); 
   free(grayscaleImage);
