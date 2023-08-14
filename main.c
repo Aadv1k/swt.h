@@ -23,14 +23,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    swt_apply_stroke_width_transform(image_data, &width, &height, &channels);
+    SWTImage image = { image_data, width, height, channels };
+    swt_apply_stroke_width_transform(&image);
 
-    if (!stbi_write_jpg(output_filename, width, height, channels, image_data, 100)) {
+    if (!stbi_write_jpg(output_filename, image.width, image.height, image.channels, image.bytes, 100)) {
         fprintf(stderr, "ERROR: unable to write image\n");
-        stbi_image_free(image_data);
+        stbi_image_free(image.bytes);
         return 1;
     }
-
-    stbi_image_free(image_data);
+    stbi_image_free(image.bytes);
     return 0;
 }
