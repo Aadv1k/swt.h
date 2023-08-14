@@ -1,7 +1,12 @@
 @echo off
 
-SET CC=gcc
-SET CFLAGS=-Wall -Wextra -pedantic -ggdb -O2
-SET SRC=main.c
+set CC=gcc
+set CFLAGS=-Wall -Wextra -pedantic
+
+if "%1" == "DEBUG" (
+  set CFLAGS=%CFLAGS% -ggdb
+)
+
+set SRC=main.c
 
 %CC% %CFLAGS% %SRC% -o swt.exe
