@@ -1,5 +1,9 @@
-/*  Stroke Width Transform (SWT), STB style header-only implementation; see -- https://en.wikipedia.org/wiki/Connected-component_labeling.
-                                   
+/*  Stroke Width Transform (SWT), stb style header-only implementation, no-deps.
+
+    Reference:
+        https://en.wikipedia.org/wiki/Connected-component_labeling.
+        https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/1509.pdf
+
     Usage:
       #define SWT_IMPLEMENTATION
       #include "swt.h"
@@ -35,6 +39,11 @@ typedef struct {
     Point* points;
     int numOfPoints;
 } SWTComponent;
+
+typedef struct {
+    SWTComponent* components;
+    int numOfComponents;
+} SWTComponents;
 
 typedef struct {
     uint8_t* bytes;
@@ -86,9 +95,42 @@ static const int sobelY[SOBEL_K_SIZE][SOBEL_K_SIZE] = {
     {-1, 0, 1}
 };
 
-SWTDEF void swt_apply_stroke_width_transform(SWTImage* image) {
-    swt_apply_grayscale(image);
-    swt_apply_threshold(image, 128);
+
+SWTComponents* swt_allocate_components(int width, int height) {
+    SWTComponents* components = (SWTComponents*)malloc(sizeof(SWTComponents));
+    if (!components) {
+        perror("Memory allocation failed for SWTComponents");
+        exit(EXIT_FAILURE);
+    }
+
+    components->numOfComponents = width * height;
+    components->components = (SWTComponent*)malloc(components->numOfComponents * sizeof(SWTComponent));
+    if (!components->components) {
+        free(components);
+        perror("Memory allocation failed for SWTComponent array");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < components->numOfComponents; i++) {
+        components->components[i].numOfPoints = 0;
+        components->components[i].points = NULL;
+    }
+
+    return components;
+}
+
+void swt_free_components(SWTComponents* components) {
+    if (components) {
+        for (int i = 0; i < components->numOfComponents; i++) {
+            free(components->components[i].points);
+        }
+        free(components->components);
+        free(components);
+    }
+}
+
+SWTDEF void swt_connected_component_analysis(SWTImage* image, SWTComponents* components) {
+  static_assert(false, "Not implemented");
 }
 
 SWTDEF void swt_apply_sobel_operator(SWTImage* image) {
@@ -155,6 +197,16 @@ SWTDEF void swt_apply_threshold(SWTImage* image, const int threshold) {
     }
 }
 
+SWTDEF void swt_apply_stroke_width_transform(SWTImage* image) {
+    swt_apply_grayscale(image);
+    swt_apply_threshold(image, 128);
+
+    SWTComponents* components = swt_allocate_components(image->width, image->height);
+    swt_connected_component_analysis(image, components);
+
+    swt_free_components(components);
+}
+
 #endif // SWT_IMPLEMENTATION
 
 /********************************************************************************
@@ -183,3 +235,4 @@ SWTDEF void swt_apply_threshold(SWTImage* image, const int threshold) {
   
   For more information, please refer to <https://unlicense.org>
 ********************************************************************************/
+
