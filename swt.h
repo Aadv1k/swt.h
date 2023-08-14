@@ -21,13 +21,13 @@ typedef struct {int label; int equivalentTo;} LabelInfo;
 #define SOBEL_K_SIZE 3
 #endif
 
-#ifndef SWT_BLACK
-#define SWT_BLACK 0
-#endif // SWT_BLACK
+#ifndef CLR_BLACK
+#define CLR_BLACK 0
+#endif // CLR_BLACK
 
-#ifndef SWT_WHITE
-#define SWT_WHITE 0
-#endif // SWT_WHITE
+#ifndef CLR_WHITE
+#define CLR_WHITE 255
+#endif // CLR_WHITE
 
 #ifndef SWT_IF_NO_MEMORY_EXIT
 #define SWT_IF_NO_MEMORY_EXIT(ptr) \
@@ -109,69 +109,89 @@ void swt_apply_grayscale(uint8_t* data, int* height, int* width, int* channels) 
 }
 
 
-static const int CARDINALS = 8;  // Number of cardinal directions
-static const int directions[8][2] = {
-    {-1, -1}, {-1, 0}, {-1, 1},
-    {0, -1},           {0, 1},
-    {1, -1}, {1, 0}, {1, 1}
+static const int CARDINALS = 1;
+static const int directions[][2] = {
+    {-1, 0},
+    {1, 0},
+    {0, 1},
+    {0, -1}
 };
 
-
-
-bool is_valid_point(int x, int y, int width, int height) {
-    return x >= 0 && x < width && y >= 0 && y < height;
-}
-
-bool swt_is_point_visited(Point* visitedPoints, int visitedPointCount, Point point) {
-    for (int i = 0; i < visitedPointCount; i++) {
-        if (visitedPoints[i].x == point.x && visitedPoints[i].y == point.y) {
+bool is_point_visited(Point* points, int visitedCount, Point target) {
+    for (int i = 0; i < visitedCount; i++) {
+        if (points[i].x == target.x && points[i].y == target.y) {
             return true;
         }
     }
     return false;
 }
 
-void swt_connected_component_analysis(uint8_t* data, uint8_t* componentData, int* width, int* height) {
+void swt_connected_component_analysis(uint8_t* data, uint8_t* connected, int* width, int* height) {
     int label = 1;
 
     Point* visitedPoints = (Point*)malloc(sizeof(Point) * (*width) * (*height));
-    int visitedPointCount = 0;
+    int visitedCount = 0;
 
-    // 8-connectivity neighbors
-    int directions[][2] = { {-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1} };
+    Point* visitedPoints2 = (Point*)malloc(sizeof(Point) * (*width) * (*height));
+    int visitedCount2 = 0;
 
     for (int i = 0; i < *height; i++) {
         for (int j = 0; j < *width; j++) {
-            int currentIndex = i * (*width) + j;
+            int index = i * (*width) + j;
+            Point currentPoint = {j, i};
+            
+            if (data[index] == CLR_WHITE && !is_point_visited(visitedPoints, visitedCount, currentPoint)) {
+                visitedPoints[visitedCount++] = currentPoint; // Add the current point to visitedPoints
 
-            // Check if the pixel is background or already visited
-            if (data[currentIndex] == 0 || swt_is_point_visited(visitedPoints, visitedPointCount, (Point){j, i})) {
-                continue;
-            }
+                for (int d = 0; d < CARDINALS; d++) {
+                    int xx = j + directions[d][0];
+                    int yy = i + directions[d][1];
+                    Point neighborPoint = {xx, yy};
 
-            data[currentIndex] = label;
-            visitedPoints[visitedPointCount++] = (Point){j, i};
+                    if (xx >= 0 && xx < *width && yy >= 0 && yy < *height &&
+                        data[yy * (*width) + xx] == CLR_WHITE &&
+                        !is_point_visited(visitedPoints, visitedCount, neighborPoint)) {
 
-            // Queue-based approach to label connected components
-            for (int q = 0; q < visitedPointCount; q++) {
-                Point currentPoint = visitedPoints[q];
-                for (int k = 0; k < 8; k++) {
-                    int xx = currentPoint.x + directions[k][1];
-                    int yy = currentPoint.y + directions[k][0];
-                    int neighborIndex = yy * (*width) + xx;
-
-                    if (is_valid_point(xx, yy, *width, *height) && data[neighborIndex] != 0 && !swt_is_point_visited(visitedPoints, visitedPointCount, (Point){xx, yy})) {
-                        data[neighborIndex] = label;
-                        visitedPoints[visitedPointCount++] = (Point){xx, yy};
+                        visitedPoints[visitedCount++] = neighborPoint;
                     }
                 }
-            }
 
-            label++;
+                while (visitedCount > 0) {
+                    visitedCount--; // Decrement the visitedCount
+
+                    for (int d = 0; d < CARDINALS; d++) {
+                        int xx = visitedPoints[visitedCount].x + directions[d][0];
+                        int yy = visitedPoints[visitedCount].y + directions[d][1];
+                        Point neighborPoint = {xx, yy};
+
+                        if (xx >= 0 && xx < *width && yy >= 0 && yy < *height &&
+                            data[yy * (*width) + xx] == CLR_WHITE &&
+                            !is_point_visited(visitedPoints, visitedCount, neighborPoint)) {
+                            
+                            visitedPoints2[visitedCount2++] = neighborPoint;
+                        }
+
+                        connected[yy * (*width) + xx] = label; // Visualize connected component
+                    }
+
+                    // Remove the current element from visitedPoints (by not copying it to visitedPoints2)
+                    // Copy visitedPoints2 into visitedPoints
+                    for (int i = 0; i < visitedCount2; i++) {
+                        visitedPoints[i] = visitedPoints2[i];
+                    }
+                    visitedCount = visitedCount2;
+                    visitedCount2 = 0;
+                }
+                
+                label++;
+            }
         }
     }
 
+    printf("%d\n", label);
+
     free(visitedPoints);
+    free(visitedPoints2);
 }
 
 
@@ -180,9 +200,9 @@ void swt_apply_threshold(uint8_t* data, int* height, int* width, int* channels, 
         for (int x = 0; x < *width; x++) {
             int index = (y * (*width) + x) * (*channels);
             if (data[index] > threshold) {
-                data[index] = 255;
+                data[index] = CLR_BLACK;
             } else {
-                data[index] = 0;
+                data[index] = CLR_WHITE;
             }
         }
     }
@@ -196,7 +216,6 @@ SWTDEF void swt_apply_stroke_width_transform(uint8_t* data, int* height, int* wi
 
   swt_apply_grayscale(grayscaleImage, width, height, channels);
   swt_apply_threshold(grayscaleImage, width, height, channels, 128);
-  //swt_apply_sobel_operator(grayscaleImage, width, height, channels);
 
   uint8_t* connectedComponentBuffer = (uint8_t*)malloc(sizeof(uint8_t) * imageSize);
   memset(connectedComponentBuffer, 0, imageSize);
