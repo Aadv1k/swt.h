@@ -113,7 +113,11 @@ SWTComponents* swt_allocate_components(int width, int height) {
 
     for (int i = 0; i < components->numOfComponents; i++) {
         components->components[i].numOfPoints = 0;
-        components->components[i].points = NULL;
+        components->components[i].points = (Point*)malloc(1000 * sizeof(Point)); // Allocate memory for points
+        if (!components->components[i].points) {
+            perror("Memory allocation failed for points array");
+            exit(EXIT_FAILURE);
+        }
     }
 
     return components;
@@ -129,8 +133,58 @@ void swt_free_components(SWTComponents* components) {
     }
 }
 
+bool is_point_visited(Point* points, int length, Point target) {
+  for (int i = 0; i < length; i++) {
+    if (points[i].x == target.x && points[i].y == target.y) return true;
+  }
+  return false;
+}
+
 SWTDEF void swt_connected_component_analysis(SWTImage* image, SWTComponents* components) {
-  static_assert(false, "Not implemented");
+  int width = image->width,
+      height = image->height;
+  uint8_t* data = image->bytes;
+
+  static const int cardinals = 4;
+  static const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+  bool* visited = (bool*)calloc(width * height, sizeof(bool));  // Initialize all as false
+  Point* queue = (Point*)malloc(sizeof(Point) * width * height);
+  int qFront = 0, qRear = 0;
+
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < width; j++) {
+      if (data[i * width + j] == CLR_BLACK || visited[i * width + j]) continue;
+
+      SWTComponent* currentComponent = &components->components[components->numOfComponents++];
+
+      queue[qRear++] = (Point){j, i};
+
+      while (qFront < qRear) {
+        Point current = queue[qFront++];
+
+        if (visited[current.y * width + current.x]) continue;
+        visited[current.y * width + current.x] = true;
+
+        currentComponent->points[currentComponent->numOfPoints++] = current;
+
+        for (int d = 0; d < cardinals; d++) {
+          int xx = current.x + directions[d][0];
+          int yy = current.y + directions[d][1];
+
+          if (xx >= 0 && xx < width && yy >= 0 && yy < height &&
+              data[yy * width + xx] == CLR_WHITE && !visited[yy * width + xx]) {
+            queue[qRear++] = (Point){xx, yy};
+          }
+        }
+      }
+
+      components->numOfComponents++;
+    }
+  }
+
+  free(queue);
+  free(visited);
 }
 
 SWTDEF void swt_apply_sobel_operator(SWTImage* image) {
@@ -203,6 +257,8 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage* image) {
 
     SWTComponents* components = swt_allocate_components(image->width, image->height);
     swt_connected_component_analysis(image, components);
+
+    printf("%d\n", components->numOfComponents);
 
     swt_free_components(components);
 }
