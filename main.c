@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     }
 
     SWTImage image = { image_data, width, height, channels };
-    swt_apply_stroke_width_transform(&image);
+    swt_apply_stroke_width_transform(&image, 128);
 
     if (!stbi_write_jpg(output_filename, image.width, image.height, image.channels, image.bytes, 100)) {
         fprintf(stderr, "ERROR: unable to write image\n");
