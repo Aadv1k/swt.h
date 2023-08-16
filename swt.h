@@ -254,14 +254,6 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image, const uint8_t thre
       swt__allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
 
-  printf("DEBUG: itemCount: %d  Size: %d\n", components->itemCount,
-         image->width * image->height);
-  printf("DEBUG: %d\n", components->items[0].pointCount);
-  printf("DEBUG: %d\n", components->items[1].pointCount);
-  printf("DEBUG: %d\n", components->items[2].pointCount);
-  printf("DEBUG: %d\n", components->items[3].pointCount);
-  printf("DEBUG: %d\n", components->items[4].pointCount);
-
   swt__free_components(components);
 }
 
