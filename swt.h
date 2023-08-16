@@ -93,68 +93,66 @@ SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold);
 
 #ifdef SWT_IMPLEMENTATION
 
-SWTDEF void swt_connected_component_analysis(SWTImage *image, SWTComponents *components) {
-    int width = image->width, height = image->height;
-    uint8_t *data = image->bytes;
+SWTDEF void swt_connected_component_analysis(SWTImage *image,
+                                             SWTComponents *components) {
+  int width = image->width, height = image->height;
+  uint8_t *data = image->bytes;
 
-    const int directions[8][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-    const int cardinals = 8;
+  const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+  const int cardinals = 4;
 
-    bool *visited = (bool *)calloc(width * height, sizeof(bool));
-    SWTPoint *queue = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
+  bool *visited = (bool *)calloc(width * height, sizeof(bool));
+  SWTPoint *queue = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
+  SWTPoint *queue2 = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (data[i * width + j] == SWT_CLR_WHITE || visited[i * width + j])
-                continue;
+  int qEnd = 0, qBegin = 0, q2End = 0;
 
-            SWTComponent currentComponent;
-            currentComponent.pointCount = 0;
-            currentComponent.points = NULL;
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < width; j++) {
+      if (data[i * width + j] == SWT_CLR_BLACK || visited[i * width + j])
+        continue;
 
-            int qEnd = 0, qBegin = 0;
+      SWTComponent currentComponent;
+      currentComponent.pointCount = 0;
+      currentComponent.points =
+          (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
 
-            queue[qEnd] = (SWTPoint){j, i};
-            qEnd++;
-            visited[i * width + j] = true;
+      queue[qEnd] = (SWTPoint){j, i};
+      qEnd++;
 
-            while (qEnd > qBegin) {
-                int x = queue[qBegin].x, y = queue[qBegin].y;
-                qBegin++;
+      while (qEnd > qBegin) {
+        int x = queue[qBegin].x, y = queue[qBegin].y;
+        qBegin++;
 
-                for (int d = 0; d < cardinals; d++) {
-                    int xx = x + directions[d][0];
-                    int yy = y + directions[d][1];
+        for (int d = 0; d < cardinals; d++) {
+          int xx = x + directions[d][0];
+          int yy = y + directions[d][1];
 
-                    if (xx < 0 || xx >= width || yy < 0 || yy >= height)
-                        continue;
-                    if (data[yy * width + xx] == SWT_CLR_BLACK || visited[yy * width + xx])
-                        continue;
+          if (xx < 0 || xx >= width || yy < 0 || yy >= height)
+            continue;
+          if (data[yy * width + xx] == SWT_CLR_BLACK ||
+              visited[yy * width + xx])
+            continue;
 
-                    queue[qEnd] = (SWTPoint){xx, yy};
-                    qEnd++;
-                    visited[yy * width + xx] = true;
+          queue2[q2End] = (SWTPoint){xx, yy};
+          q2End++;
+          visited[yy * width + xx] = true;
 
-                    if (currentComponent.pointCount == 0) {
-                        currentComponent.points = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
-                    }
-                    currentComponent.points[currentComponent.pointCount] = (SWTPoint){xx, yy};
-                    currentComponent.pointCount++;
-                }
-            }
-
-            if (currentComponent.pointCount > 0) {
-                components->items[components->itemCount] = currentComponent;
-                components->itemCount++;
-            }
+          currentComponent.points[currentComponent.pointCount] =
+              (SWTPoint){xx, yy};
+          currentComponent.pointCount++;
         }
+      }
+
+      components->items[components->itemCount] = currentComponent;
+      components->itemCount++;
     }
+  }
 
-    free(visited);
-    free(queue);
+  free(visited);
+  free(queue);
+  free(queue2);
 }
-
-
 
 SWTDEF void swt_apply_sobel_operator(SWTImage *image) {
   assert(image->channels == 1);
