@@ -1,3 +1,6 @@
+// TODO: implement the actual function to calculate stroke width
+
+
 /*  swt.h -- stb style header-only library for Stroke Width Transform (SWT)
 
     Note: This implementation isn't perfect, I will continue to improve/optimize
@@ -17,14 +20,22 @@
         .height = height,
         .channels = comp
       };
-      swt_stroke_width_transform(&image, 128); // applies threshold of 128 
 
-    Additionally, you can use any one of the several functions used internally for pre-processing:
+    For most cases you can just call the primary function
 
-      void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
-      void swt_apply_sobel_operator(SWTImage *image);
-      void swt_apply_grayscale(SWTImage *image);
-      void swt_apply_threshold(SWTImage *image, const int threshold);
+        swt_stroke_width_transform(&image);
+
+    Here is an "unwrapped" implementation which might provide you greater control
+
+        swt_apply_grayscale(&image);
+        swt_apply_threshold(&image, SWT_THRESHOLD);
+
+        SWTComponents *components = swt_allocate_components(image.width, image.height);
+        swt_connected_component_analysis(image, components);
+
+        swt_free_components(components);
+
+    For a overview of how each function works, see the definitions 
  */
 
 #ifndef SWT_H_
@@ -72,6 +83,10 @@ typedef struct {
 #define SWT_CLR_WHITE 255
 #endif // SWT_CLR_WHITE
 
+#ifndef SWT_THRESHOLD
+#define SWT_THRESHOLD 128
+#endif // SWT_THRESHOLD
+
 #ifndef SWT_IF_NO_MEMORY_EXIT
 #define SWT_IF_NO_MEMORY_EXIT(ptr)                                             \
   do {                                                                         \
@@ -82,11 +97,66 @@ typedef struct {
   } while (0)
 #endif // SWT_IF_NO_MEMORY_EXIT
 
-SWTDEF void swt_apply_stroke_width_transform(SWTImage *image, const uint8_t threshold);
-SWTDEF void swt_connected_component_analysis(SWTImage *image,
-                                             SWTComponents *components);
-SWTDEF void swt_apply_sobel_operator(SWTImage *image);
+/**
+ * This function handles all of the pre-processing, and then the clean-up required for the SWT implementation
+ *
+ * @param image Pointer to the SWTImage structure representing the input image.
+ * @param threshold Threshold value for the thresholding step.
+ */
+SWTDEF void swt_apply_stroke_width_transform(SWTImage *image);
+
+
+/**
+ * Performs connected component analysis on the given image.
+ *
+ * This function performs connected component analysis (CCA) on the provided
+ * image to identify individual connected components. The results are stored
+ * in the SWTComponents structure, which should be allocated beforehand.
+ *
+ * @param image Pointer to the SWTImage structure representing the input image.
+ * @param components Pointer to the allocated SWTComponents structure to store results.
+ */
+SWTDEF void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
+
+/**
+ * Allocates memory for SWTComponents structure.
+ *
+ * This function allocates memory for the SWTComponents structure which is used
+ * to store the results of connected component analysis.
+ *
+ * @param width Width of the image.
+ * @param height Height of the image.
+ * @return Pointer to the allocated SWTComponents structure.
+ */
+SWTDEF SWTComponents *swt_allocate_components(int width, int height);
+
+/**
+ * Frees memory for SWTComponents structure.
+ *
+ * This function releases memory allocated for the SWTComponents structure.
+ *
+ * @param components Pointer to the SWTComponents structure to be freed.
+ */
+SWTDEF void swt_free_components(SWTComponents *components);
+
+
+/**
+ * Converts the image to grayscale.
+ *
+ * This function converts the provided image to grayscale.
+ *
+ * @param image Pointer to the SWTImage structure representing the input image.
+ */
 SWTDEF void swt_apply_grayscale(SWTImage *image);
+
+/**
+ * Applies thresholding to the image.
+ *
+ * This function applies thresholding to the provided image based on the given threshold value.
+ *
+ * @param image Pointer to the SWTImage structure representing the input image.
+ * @param threshold Threshold value for the thresholding operation.
+ */
 SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold);
 
 #endif // SWT_H_
@@ -227,7 +297,7 @@ SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold) {
   }
 }
 
-static SWTComponents *swt__allocate_components(int width, int height) {
+SWTDEF SWTComponents *swt_allocate_components(int width, int height) {
   SWTComponents *components = (SWTComponents *)malloc(sizeof(SWTComponents));
   components->itemCount = 0;
   components->items =
@@ -236,7 +306,7 @@ static SWTComponents *swt__allocate_components(int width, int height) {
   return components;
 }
 
-static void swt__free_components(SWTComponents *components) {
+SWTDEF void swt_free_components(SWTComponents *components) {
   if (components) {
     for (int i = 0; i < components->itemCount; i++) {
       free(components->items[i].points);
@@ -246,15 +316,15 @@ static void swt__free_components(SWTComponents *components) {
   }
 }
 
-SWTDEF void swt_apply_stroke_width_transform(SWTImage *image, const uint8_t threshold) {
+SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
-  swt_apply_threshold(image, threshold);
+  swt_apply_threshold(image, SWT_THRESHOLD);
 
   SWTComponents *components =
-      swt__allocate_components(image->width, image->height);
+      swt_allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
 
-  swt__free_components(components);
+  swt_free_components(components);
 }
 
 #endif // SWT_IMPLEMENTATION

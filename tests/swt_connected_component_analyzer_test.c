@@ -27,7 +27,7 @@ CCA_SmallImage_hasExpectedComponents(const MunitParameter params[],
   };
 
   SWTComponents *components =
-      swt__allocate_components(image.width, image.height);
+      swt_allocate_components(image.width, image.height);
 
   swt_apply_grayscale(&image);
   swt_apply_threshold(&image, 128);
@@ -38,7 +38,7 @@ CCA_SmallImage_hasExpectedComponents(const MunitParameter params[],
 
   munit_assert_int(components->itemCount, ==, 16); // 16 was derived via OpenCV's implementation of the same
 
-  swt__free_components(components);
+  swt_free_components(components);
 
   stbi_image_free(image.bytes);
 
