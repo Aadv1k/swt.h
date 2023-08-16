@@ -34,7 +34,6 @@ CCA_SmallImage_hasExpectedComponents(const MunitParameter params[],
 
   swt_connected_component_analysis(&image, components);
 
-
   munit_logf(1, "image_size = %d", width, height, width * height);
 
   munit_assert_int(components->itemCount, ==, 16); // 16 was derived via OpenCV's implementation of the same
