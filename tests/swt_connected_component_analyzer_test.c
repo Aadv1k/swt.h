@@ -3,6 +3,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../thirdparty/stb_image.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../thirdparty/stb_image_write.h"
+
 #define SWT_IMPLEMENTATION
 #include "../swt.h"
 
@@ -33,9 +36,20 @@ CCA_SmallImage_hasExpectedComponents(const MunitParameter params[],
 
   swt_connected_component_analysis(&image, components);
 
+  for (int i = 0; i < components->itemCount; i++) {
+    for (int j = 0; j < components->items[i].pointCount; j++) {
+      int x = components->items[i].points[j].x;
+      int y = components->items[i].points[j].y;
+
+      image.bytes[y * width + x] = 100;
+    }
+  }
+
+  stbi_write_jpg("output.jpg", width, height, channels, image.bytes, 100);
+
   munit_logf(1, "image_size = %d", width, height, width * height);
 
-  munit_assert_int(components->itemCount, <=, 17);
+  munit_assert_int(components->itemCount, ==, 17);
 
   swt__free_components(components);
 
