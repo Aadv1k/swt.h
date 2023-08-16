@@ -202,7 +202,7 @@ SWTDEF void swt_apply_grayscale(SWTImage *image) {
   uint8_t *grayscaleImage = (uint8_t *)malloc(imageSize * sizeof(uint8_t));
   SWT_IF_NO_MEMORY_EXIT(grayscaleImage);
 
-  for (int i = 0; i < imageSize; i++) {
+  for (int i = 0; i <= imageSize; i++) {
     uint8_t r = image->bytes[i * 3];
     uint8_t g = image->bytes[i * 3 + 1];
     uint8_t b = image->bytes[i * 3 + 2];
