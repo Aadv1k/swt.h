@@ -32,7 +32,7 @@
 
         swt_free_components(components);
 
-    For a overview of how each function works, see the definitions 
+    For further info on how to use these function, scroll further
  */
 
 #ifndef SWT_H_
@@ -112,68 +112,35 @@ typedef struct {
   } while (0)
 #endif // SWT_IF_NO_MEMORY_EXIT
 
-/**
- * This function handles all of the pre-processing, and then the clean-up required for the SWT implementation
- *
- * @param image Pointer to the SWTImage structure representing the input image.
- * @param threshold Threshold value for the thresholding step.
- */
-SWTDEF void swt_apply_stroke_width_transform(SWTImage *image);
-
+// TODO: add usage info for these
 SWTDEF void swt_free_results(SWTResults *results);
 SWTDEF SWTResults *swt_allocate_results(int count);
 
-/**
- * Performs connected component analysis on the given image.
- *
- * This function performs connected component analysis (CCA) on the provided
- * image to identify individual connected components. The results are stored
- * in the SWTComponents structure, which should be allocated beforehand.
- *
- * @param image Pointer to the SWTImage structure representing the input image.
- * @param components Pointer to the allocated SWTComponents structure to store results.
- */
-SWTDEF void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
+// Usage:
+//
+//    SWTSobelNode node = swt_compute_sobel_for_point(image, (Point){0, 1});
+//      node.gradientX
+//      node.gradientY
+//      node.magnitude
+//      node.direction
+//
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image, SWTPoint point);
 
-/**
- * Allocates memory for SWTComponents structure.
- *
- * This function allocates memory for the SWTComponents structure which is used
- * to store the results of connected component analysis.
- *
- * @param width Width of the image.
- * @param height Height of the image.
- * @return Pointer to the allocated SWTComponents structure.
- */
+
+// Usage:
+//
+//    SWTComponents *components =
+//        swt_allocate_components(image->width, image->height);
+//    swt_connected_component_analysis(image, components);
+//    swt_free_components(components);
+
 SWTDEF SWTComponents *swt_allocate_components(int width, int height);
-
-/**
- * Frees memory for SWTComponents structure.
- *
- * This function releases memory allocated for the SWTComponents structure.
- *
- * @param components Pointer to the SWTComponents structure to be freed.
- */
+SWTDEF void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
 SWTDEF void swt_free_components(SWTComponents *components);
 
+// pre-processing apply filters destructively, eg they may resize and/or modify the struct
 
-/**
- * Converts the image to grayscale.
- *
- * This function converts the provided image to grayscale.
- *
- * @param image Pointer to the SWTImage structure representing the input image.
- */
 SWTDEF void swt_apply_grayscale(SWTImage *image);
-
-/**
- * Applies thresholding to the image.
- *
- * This function applies thresholding to the provided image based on the given threshold value.
- *
- * @param image Pointer to the SWTImage structure representing the input image.
- * @param threshold Threshold value for the thresholding operation.
- */
 SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold);
 
 #endif // SWT_H_
@@ -240,46 +207,6 @@ SWTDEF void swt_connected_component_analysis(SWTImage *image, SWTComponents *com
     free(queue);
 }
 
-
-SWTDEF void swt_apply_sobel_operator(SWTImage *image) {
-  assert(image->channels == 1);
-
-  const int sobel_k_size = 3;
-
-  const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
-  const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
-
-  uint8_t *result =
-      (uint8_t *)malloc(image->width * image->height * sizeof(uint8_t));
-  SWT_IF_NO_MEMORY_EXIT(result);
-
-  for (int i = 0; i < image->height; i++) {
-    for (int j = 0; j < image->width; j++) {
-      int gradientX = 0;
-      int gradientY = 0;
-
-      for (int y = 0; y < sobel_k_size; y++) {
-        for (int x = 0; x < sobel_k_size; x++) {
-          int offsetY = i - sobel_k_size / 2 + y;
-          int offsetX = j - sobel_k_size / 2 + x;
-
-          if (offsetY >= 0 && offsetY < image->height && offsetX >= 0 &&
-              offsetX < image->width) {
-            gradientX +=
-                sobelX[y][x] * image->bytes[offsetY * image->width + offsetX];
-            gradientY +=
-                sobelY[y][x] * image->bytes[offsetY * image->width + offsetX];
-          }
-        }
-      }
-      int magnitude = (int)sqrt(gradientX * gradientX + gradientY * gradientY);
-      result[i * image->width + j] = (uint8_t)(magnitude >= 128 ? 255 : 0);
-    }
-  }
-
-  memcpy(image->bytes, result, image->height * image->width * sizeof(uint8_t));
-  free(result);
-}
 
 SWTDEF void swt_apply_grayscale(SWTImage *image) {
   assert(image->channels == 3);
@@ -351,7 +278,6 @@ SWTDEF SWTResults *swt_allocate_results(int count) {
 }
 
 SWTDEF void swt_free_results(SWTResults *results) {
-  // is this it?
   free(results->items);
 }
 
@@ -363,7 +289,7 @@ SWTDEF float swt__median(float* nums, float len) {
 }
 
 
-SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image, Point point) {
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image, SWTPoint point) {
   const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
   const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
 
@@ -390,53 +316,9 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image, Point point) {
 }
 
 
-int swt_sobel_get_gradient_x(SWTImage* image, int x, int y) {
-  int gradientX = 0;
-
-  for (int yk = 0; yk < 3; yk++) {
-    for (int xk = 0; xk < 3; xk++) {
-      int offsetY = y - 1 + yk;
-      int offsetX = x - 1 + xk;
-
-      if (offsetY >= 0 && offsetY < image->height && offsetX >= 0 && offsetX < image->width) {
-        gradientX += sobelX[yk][xk] * image->bytes[offsetY * image->width + offsetX];
-
-      }
-
-    }
-  }
-  return gradientX;
-}
-
-int swt_sobel_get_gradient_y(SWTImage *image, int x, int y) {
-  int gradientY = 0;
-
-  for (int yk = 0; yk < 3; yk++) {
-    for (int xk = 0; xk < 3; xk++) {
-      int offsetY = y - 1 + yk;
-      int offsetX = x - 1 + xk;
-
-      if (offsetY >= 0 && offsetY < image->height && offsetX >= 0 && offsetX < image->width) {
-        gradientY += sobelY[yk][xk] * image->bytes[offsetY * image->width + offsetX];
-      }
-    }
-  }
-  return gradientY;
-}
-
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
   swt_apply_threshold(image, SWT_THRESHOLD);
-
-  SWTImage sobelImage;
-  sobelImage.width = image->width;
-  sobelImage.height = image->height;
-  sobelImage.bytes = malloc(sizeof(uint8_t) * image->width * image->height);
-  sobelImage.channels = image->channels;
-
-  memcpy(sobelImage.bytes, image->bytes, sizeof(uint8_t) * image->width * image->height);
-
-  swt_apply_sobel_operator(sobelImage);
 
   SWTComponents *components = swt_allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
@@ -445,13 +327,12 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   for (int i = 0; i < components->itemCount; i++) {
     SWTComponent currentComponent = components->itemCount[i];
 
-    // TODO: find a better way to allocate memory here  
-    int *strokes = malloc(sizeof(int) * pow(currentComponent.pointCount, 2)); 
+    int *strokes = malloc(sizeof(int) * image->width * image->height);
     int strokeCount = 0;
 
     for (int j = 0; j < currentComponent.pointCount; j++) {
-      int pixelIndex = (currentComponent.points[j].y * sobelImage.width) + currentComponent.points[j].x;
-      uint8_t sobelPixelValue = sobelImage.bytes[pixelIndex];
+      SWTSobelNode sobelNode = swt_compute_sobel_for_point(image, currentComponent.points[j]);
+      assert(false && "Not implemented");
       /*
        * Calculate the stroke width by
        * -> Follow a ray along the gradient direction
@@ -467,7 +348,6 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
     SWTResults->itemsCount++;
   } 
     
-  free(sobelImage.bytes)
   swt_free_results(results);
   swt_free_components(components);
 }
