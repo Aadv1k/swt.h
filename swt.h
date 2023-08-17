@@ -88,11 +88,19 @@ typedef struct {
   int direction;
   int gradientX;
   int gradientY;
-} SWTSobelNode
+} SWTSobelNode;
 
 #ifndef SWT_CLR_BLACK
 #define SWT_CLR_BLACK 0
 #endif // SWT_CLR_BLACK
+
+#ifndef SWT_SWAP
+#define SWT_SWAP(dest, src) do { \
+    int temp = dest; \
+    dest = src; \
+    src = temp; \
+} while (0)
+#endif // SWT_SWAP    
 
 #ifndef SWT_CLR_WHITE
 #define SWT_CLR_WHITE 255
@@ -112,8 +120,9 @@ typedef struct {
   } while (0)
 #endif // SWT_IF_NO_MEMORY_EXIT
 
-// TODO: add usage info for these
-SWTDEF void swt_free_results(SWTResults *results);
+    // TODO: add usage info for these
+    SWTDEF void
+    swt_free_results(SWTResults *results);
 SWTDEF SWTResults *swt_allocate_results(int count);
 
 // This function computes the gradient info via sobel operator, for the pixel
@@ -285,14 +294,7 @@ SWTDEF SWTResults *swt_allocate_results(int count) {
 
 SWTDEF void swt_free_results(SWTResults *results) { free(results->items); }
 
-SWTDEF float swt__median(float *nums, float len) {
-  const float half = len / 2;
-  if (half == 0.0)
-    return nums[half];
-  return (nums[floor(half)] + nums[ceil(half)]) / 2
-}
-
-SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image,
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
                                                 SWTPoint point) {
   const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
   const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
@@ -320,6 +322,25 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image,
   return node;
 }
 
+SWTDEF void swt__bubble_sort(int *nums, int len) {
+    for (int i = 0; i < len - 1; i++) {
+        for (int j = 0; j < len - i - 1; j++) {
+            if (nums[j + 1] < nums[j]) {
+                SWT_SWAP(nums[j], nums[j + 1]);
+            }
+        }
+    }
+}
+
+SWTDEF float swt__median(int *nums, float len) {
+  swt__bubble_sort(nums, len);
+
+  const float half = len / 2;
+  if (half == 0.0)
+    return nums[(int)half];
+  return (nums[(int)floor(half)] + nums[(int)ceil(half)]) / 2;
+}
+
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
   swt_apply_threshold(image, SWT_THRESHOLD);
@@ -330,7 +351,7 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   SWTResults *results = swt_allocate_results(components->itemCount);
 
   for (int i = 0; i < components->itemCount; i++) {
-    SWTComponent currentComponent = components->itemCount[i];
+    SWTComponent currentComponent = components->items[i];
 
     int *strokes = malloc(sizeof(int) * image->width * image->height);
     int strokeCount = 0;
@@ -338,19 +359,35 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
     for (int j = 0; j < currentComponent.pointCount; j++) {
       SWTSobelNode sobelNode =
           swt_compute_sobel_for_point(image, currentComponent.points[j]);
-      assert(false && "Not implemented");
-      /*
-       * Calculate the stroke width by
-       * -> Follow a ray along the gradient direction
-       * -> Store the starting and ending distance until it encounters a
-       * background pixel (EG leaves the trail)
-       */
+
+      int distancePositive = 0;
+
+      int xx = currentComponent.points[j].x;
+      int yy = currentComponent.points[j].y;
+
+      float step_x = cos(sobelNode.direction);
+      float step_y = sin(sobelNode.direction);
+
+      for (int i = 0; i < image->width * image->height; i++) {
+        int x = xx + (int)(i * step_x);
+        int y = yy + (int)(i * step_y);
+
+        if (x < 0 || x >= image->width || y < 0 || y >= image->height) break;
+        if (image->bytes[y * image->width + x] == SWT_CLR_BLACK) break;
+
+        distancePositive++;
+      }
+
+      strokes[strokeCount] = distancePositive;
+      strokeCount++;
     }
 
     float median = swt__median(strokes, strokeCount);
-    SWTResults->items[SWTResults->itemsCount] = {.component = &currentComponent,
-                                                 .confidence = median};
-    SWTResults->itemsCount++;
+    results->items[results->itemCount].component = &currentComponent;
+    results->items[results->itemCount].confidence = median;
+
+    results->itemCount++;
+    free(strokes);
   }
 
   swt_free_results(results);
