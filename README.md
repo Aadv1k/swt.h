@@ -29,7 +29,6 @@ The tests are written using [µnit](https://nemequ.github.io/munit/) find them a
 .\swt_test.exe
 ```
 
-
 ## Examples
 
 Here is how you would use this with stb
@@ -38,10 +37,10 @@ Here is how you would use this with stb
   /* ... */
 
   int width, height, channels;
-  uint8_t* image_data = stbi_load("./thirdparty/example.jpg", &width, &height, &channels, 0);
+  uint8_t* image_data = stbi_load("./thirdparty/test1.jpg", &width, &height, &channels, 0);
 
   SWTImage image = { image_data, width, height, channels };
-
+  
   swt_apply_stroke_width_transform(&image, 128);
 
   stbi_write_jpg("output.jpg", image.width, image.height, image.channels, image.bytes, 100);
