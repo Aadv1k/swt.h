@@ -5,9 +5,9 @@ Zero-dependency, public domain header-only library that implements [Stroke Width
 See:
 
 - [Quickstart](#quickstart)
-- [Tests](#tests)
 - [Examples](#examples)
-- [Credits](#credits)
+- [Gallery](#gallery)
+- [Tests](#tests)
 
 ## Quickstart
 
@@ -20,6 +20,36 @@ The documentation for functions is also contained within the header file
 #include "swt.h"
 ```
 
+## Examples
+
+Here is how you would use this with stb
+
+```c
+  /* ... */
+
+    SWTImage image = { image_data, width, height, channels };
+    SWTComponents *components = swt_allocate_components(image.width * image.height);
+    SWTResults *results = swt_allocate_results(image.width * image.height);
+
+    swt_apply_stroke_width_transform(&image, components, results);
+    
+    swt_visualize_text_on_image(&image, results);
+
+    swt_free_components(components);
+    swt_free_results(results);
+
+  /* ... */
+```
+
+this will produce the following output
+
+## Gallery
+
+| Original image                            | Detected text (Highlighted in Gray)            |
+|-------------------------------------------|------------------------------------------------|
+| <img alt="original image" width="250" src="./thirdparty/test2.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/test2_output.jpg" /> |
+
+
 ## Tests
 
 The tests are written using [µnit](https://nemequ.github.io/munit/) find them at [`tests/`](./tests)
@@ -29,29 +59,3 @@ The tests are written using [µnit](https://nemequ.github.io/munit/) find them a
 .\swt_test.exe
 ```
 
-## Examples
-
-Here is how you would use this with stb
-
-```c
-  /* ... */
-
-  int width, height, channels;
-  uint8_t* image_data = stbi_load("./thirdparty/test1.jpg", &width, &height, &channels, 0);
-
-  SWTImage image = { image_data, width, height, channels };
-  
-  swt_apply_stroke_width_transform(&image, 128);
-
-  stbi_write_jpg("output.jpg", image.width, image.height, image.channels, image.bytes, 100);
-
-  stbi_image_free(image.bytes);
-
-  /* ... */
-```
-
-## Credits
-
-- [µnit](https://nemequ.github.io/munit/)
-- [stb](https://github.com/nothings/stb)
-- [C Logo](https://commons.wikimedia.org/wiki/File:C_Logo.png)
