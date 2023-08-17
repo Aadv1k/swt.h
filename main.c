@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     swt_apply_stroke_width_transform(&image, components, results);
 
+
     swt_free_components(components);
     swt_free_results(results);
 
