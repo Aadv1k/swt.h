@@ -39,7 +39,7 @@
 #define SWT_H_
 
 #include <assert.h>
-#include <math.h>
+#include <math.h> // pow, atan2, sqrt, floor, ceil
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -83,6 +83,13 @@ typedef struct {
   int channels;
 } SWTImage;
 
+typedef struct {
+  int magnitude;
+  int direction;
+  int gradientX;
+  int gradientY;
+} SWTSobelNode
+
 #ifndef SWT_CLR_BLACK
 #define SWT_CLR_BLACK 0
 #endif // SWT_CLR_BLACK
@@ -113,6 +120,8 @@ typedef struct {
  */
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image);
 
+SWTDEF void swt_free_results(SWTResults *results);
+SWTDEF SWTResults *swt_allocate_results(int count);
 
 /**
  * Performs connected component analysis on the given image.
@@ -324,6 +333,7 @@ SWTDEF void swt_free_components(SWTComponents *components) {
   }
 }
 
+
 SWTDEF SWTResults *swt_allocate_results(int count) {
   SWTResults *results = (SWTResults*)malloc(sizeof(SWTResults));
 
@@ -346,16 +356,118 @@ SWTDEF void swt_free_results(SWTResults *results) {
 }
 
 
+SWTDEF float swt__median(float* nums, float len) {
+  const float half = len / 2;
+  if (half == 0.0) return nums[half];
+  return (nums[floor(half)] + nums[ceil(half)]) /  2
+}
+
+
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTimage *image, Point point) {
+  const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
+  const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+
+  SWTSobelNode node = {0};
+
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0; x < 3; x++) {
+      int xx = point.x + x;
+      int yy = point.y + y;
+      
+      if (xx >= 0 && xx < image->width && yy >= 0 && yy < image->height) {
+        int currentIndex = yy * image->width + xx;
+
+        node.gradientX += image->bytes[currentIndex] * sobelX[y][x];
+        node.gradientY += image->bytes[currentIndex] * sobelY[y][x];
+      }
+    }
+  }
+
+  node.magnitude = sqrt(node.gradientX * node.gradientX + node.gradientY * node.gradientY);
+  node.direction = atan2(node.gradientY, node.gradientX);
+
+  return node; 
+}
+
+
+int swt_sobel_get_gradient_x(SWTImage* image, int x, int y) {
+  int gradientX = 0;
+
+  for (int yk = 0; yk < 3; yk++) {
+    for (int xk = 0; xk < 3; xk++) {
+      int offsetY = y - 1 + yk;
+      int offsetX = x - 1 + xk;
+
+      if (offsetY >= 0 && offsetY < image->height && offsetX >= 0 && offsetX < image->width) {
+        gradientX += sobelX[yk][xk] * image->bytes[offsetY * image->width + offsetX];
+
+      }
+
+    }
+  }
+  return gradientX;
+}
+
+int swt_sobel_get_gradient_y(SWTImage *image, int x, int y) {
+  int gradientY = 0;
+
+  for (int yk = 0; yk < 3; yk++) {
+    for (int xk = 0; xk < 3; xk++) {
+      int offsetY = y - 1 + yk;
+      int offsetX = x - 1 + xk;
+
+      if (offsetY >= 0 && offsetY < image->height && offsetX >= 0 && offsetX < image->width) {
+        gradientY += sobelY[yk][xk] * image->bytes[offsetY * image->width + offsetX];
+      }
+    }
+  }
+  return gradientY;
+}
+
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
   swt_apply_threshold(image, SWT_THRESHOLD);
+
+  SWTImage sobelImage;
+  sobelImage.width = image->width;
+  sobelImage.height = image->height;
+  sobelImage.bytes = malloc(sizeof(uint8_t) * image->width * image->height);
+  sobelImage.channels = image->channels;
+
+  memcpy(sobelImage.bytes, image->bytes, sizeof(uint8_t) * image->width * image->height);
+
+  swt_apply_sobel_operator(sobelImage);
 
   SWTComponents *components = swt_allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
   SWTResults *results = swt_allocate_results(components->itemCount);
 
-  /* Do Stroke Width computation here */ 
+  for (int i = 0; i < components->itemCount; i++) {
+    SWTComponent currentComponent = components->itemCount[i];
+
+    // TODO: find a better way to allocate memory here  
+    int *strokes = malloc(sizeof(int) * pow(currentComponent.pointCount, 2)); 
+    int strokeCount = 0;
+
+    for (int j = 0; j < currentComponent.pointCount; j++) {
+      int pixelIndex = (currentComponent.points[j].y * sobelImage.width) + currentComponent.points[j].x;
+      uint8_t sobelPixelValue = sobelImage.bytes[pixelIndex];
+      /*
+       * Calculate the stroke width by
+       * -> Follow a ray along the gradient direction
+       * -> Store the starting and ending distance until it encounters a background pixel (EG leaves the trail)
+      */ 
+    }
+
+    float median = swt__median(strokes, strokeCount);
+    SWTResults->items[SWTResults->itemsCount] = {
+      .component = &currentComponent,
+      .confidence = median 
+    };
+    SWTResults->itemsCount++;
+  } 
     
+  free(sobelImage.bytes)
   swt_free_results(results);
   swt_free_components(components);
 }
