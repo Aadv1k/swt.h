@@ -73,7 +73,7 @@ typedef struct {
 
 typedef struct {
   SWTResult* items;
-  int resultCount;
+  int itemCount;
 } SWTResults;
 
 typedef struct {
@@ -324,29 +324,35 @@ SWTDEF void swt_free_components(SWTComponents *components) {
   }
 }
 
-SWTDEF SWTResult *swt_allocate_results(int count) {
-  SWTResults results = {
-    .items = NULL,
-    .itemCount = 0
-  };
+SWTDEF SWTResults *swt_allocate_results(int count) {
+  SWTResults *results = (SWTResults*)malloc(sizeof(SWTResults));
 
-  result->items = (SWTResult*)malloc(sizeof(SWTResult) * count);
+  results->items = (SWTResult*)malloc(sizeof(SWTResult) * count);
+  SWT_IF_NO_MEMORY_EXIT(results->items);
+
+  results->itemCount = 0;
 
   for (int i = 0; i <= count; i++) {
-    result->items[i] = {
-      .confidence = 0.0f
-    }
+    results->items[i].confidence = 0.0f;
+    results->items[i].component = NULL;
   }
 
+  return results;
 }
+
+SWTDEF void swt_free_results(SWTResults *results) {
+  // is this it?
+  free(results->items);
+}
+
 
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
   swt_apply_threshold(image, SWT_THRESHOLD);
 
-  SWTComponents components = swt_allocate_components(image->width, image->height);
+  SWTComponents *components = swt_allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
-  SWTResults results = swt_allocate_results(components->itemCount);
+  SWTResults *results = swt_allocate_results(components->itemCount);
 
   /* Do Stroke Width computation here */ 
     
