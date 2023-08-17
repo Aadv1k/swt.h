@@ -1,6 +1,3 @@
-// TODO: implement the actual function to calculate stroke width
-
-
 /*  swt.h -- stb style header-only library for Stroke Width Transform (SWT)
 
     Note: This implementation isn't perfect, I will continue to improve/optimize
@@ -58,6 +55,7 @@ typedef struct {
   int y;
 } SWTPoint;
 
+
 typedef struct {
   SWTPoint *points;
   int pointCount;
@@ -67,6 +65,16 @@ typedef struct {
   SWTComponent *items;
   int itemCount;
 } SWTComponents;
+
+typedef struct {
+  SWTComponent *component; // holds a reference to a component elsewhere
+  float confidence;
+} SWTResult;
+
+typedef struct {
+  SWTResult* items;
+  int resultCount;
+} SWTResults;
 
 typedef struct {
   uint8_t *bytes;
@@ -316,14 +324,33 @@ SWTDEF void swt_free_components(SWTComponents *components) {
   }
 }
 
+SWTDEF SWTResult *swt_allocate_results(int count) {
+  SWTResults results = {
+    .items = NULL,
+    .itemCount = 0
+  };
+
+  result->items = (SWTResult*)malloc(sizeof(SWTResult) * count);
+
+  for (int i = 0; i <= count; i++) {
+    result->items[i] = {
+      .confidence = 0.0f
+    }
+  }
+
+}
+
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image) {
   swt_apply_grayscale(image);
   swt_apply_threshold(image, SWT_THRESHOLD);
 
-  SWTComponents *components =
-      swt_allocate_components(image->width, image->height);
+  SWTComponents components = swt_allocate_components(image->width, image->height);
   swt_connected_component_analysis(image, components);
+  SWTResults results = swt_allocate_results(components->itemCount);
 
+  /* Do Stroke Width computation here */ 
+    
+  swt_free_results(results);
   swt_free_components(components);
 }
 
