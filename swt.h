@@ -59,12 +59,11 @@
 #define SWT_H_
 
 #include <assert.h>
-#include <math.h> // pow, atan2, sqrt, floor, ceil
 #include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <math.h> // pow, atan2, sqrt, floor, ceil
+#include <stdint.h> // uint8_t
+#include <stdlib.h> // qsort, malloc, calloc, free
+#include <string.h> // memcpy
 
 #ifndef SWTDEF
 #define SWTDEF static inline
@@ -306,9 +305,9 @@ SWTComponents *swt_allocate_components(int size) {
 
 void swt_free_components(SWTComponents *components) {
     if (components) {
-        components->items = NULL; // Set to NULL to avoid accidental double-free
-        components->itemCount = 0; // Reset itemCount for clarity
-        free(components); // Free the entire structure
+        components->items = NULL;
+        components->itemCount = 0;
+        free(components);
     }
 }
 
@@ -373,24 +372,19 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage * image,
    return node;
  }
 
- SWTDEF void swt__bubble_sort(int *nums, int len) {
-   for (int i = 0; i < len - 1; i++) {
-     for (int j = 0; j < len - i - 1; j++) {
-       if (nums[j + 1] < nums[j]) {
-         SWT_SWAP(nums[j], nums[j + 1]);
-       }
-     }
-   }
- }
 
- SWTDEF float swt__median(int *nums, float len) {
-   swt__bubble_sort(nums, len);
+int swt__qsort_compare(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
+}
 
-   const float half = len / 2;
-   if (half == 0.0)
-     return nums[(int)half];
-   return (nums[(int)floor(half)] + nums[(int)ceil(half)]) / 2;
- }
+float swt__median(int *nums, int len) {
+    qsort(nums, len, sizeof(int), swt__qsort_compare);
+
+    const float half = len / 2.0;
+    if (len % 2 == 0) return (nums[(int)half - 1] + nums[(int)half]) / 2.0;
+
+    return nums[(int)half];
+}
 
 float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
     int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
