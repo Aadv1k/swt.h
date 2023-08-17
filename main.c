@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     SWTResults *results = swt_allocate_results(image.width * image.height);
 
     swt_apply_stroke_width_transform(&image, components, results);
-
+    swt_visualize_text_on_image(&image, results);
 
     swt_free_components(components);
     swt_free_results(results);

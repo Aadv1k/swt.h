@@ -187,6 +187,8 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage * image,
 SWTDEF void swt_apply_grayscale(SWTImage * image);
 SWTDEF void swt_apply_threshold(SWTImage * image, const int threshold);
 
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults* results);
+
 #endif // SWT_H_
 
 #ifdef SWT_IMPLEMENTATION
@@ -317,7 +319,7 @@ SWTResults *swt_allocate_results(int count) {
         results->items = (SWTResult *)malloc(sizeof(SWTResult) * count);
         
         if (results->items != NULL) {
-            results->itemCount = count;
+            results->itemCount = 0;
 
             for (int i = 0; i < count; i++) {
                 results->items[i].confidence = 0.0f;
@@ -439,14 +441,35 @@ float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *curr
    swt_connected_component_analysis(image, components);
 
    for (int i = 0; i < components->itemCount; i++) {
-
-     results->items[results->itemCount].component = &components->items[i];
-     results->items[results->itemCount].confidence =
+     results->items[i].component = &components->items[i];
+     results->items[i].confidence =
          swt_compute_stroke_width_for_component(image, &components->items[i]);
-
      results->itemCount++;
    }
 
+}
+
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults* results) {
+    if (image == NULL || results == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < results->itemCount; i++) {
+        SWTComponent *component = results->items[i].component;
+        if (component == NULL || results->items[i].confidence >= 3) {
+            continue;
+        }
+
+
+        for (int j = 0; j < component->pointCount; j++) {
+            SWTPoint point = component->points[j];
+
+            if (point.x >= 0 && point.x < image->width && point.y >= 0 && point.y < image->height) {
+                int index = (point.y * image->width + point.x) * image->channels;
+                image->bytes[index] = 128;
+            }
+        }
+    }
 }
 
 #endif // SWT_IMPLEMENTATION
@@ -476,4 +499,5 @@ float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *curr
     OTHER DEALINGS IN THE SOFTWARE.
 
     For more information, please refer to <https://unlicense.org>
+
   ********************************************************************************/
