@@ -1,70 +1,68 @@
-/*  swt.h -- stb style header-only library for Stroke Width Transform (SWT)
+/* swt.h -- stb style header-only library for Stroke Width Transform (SWT)
 
-    Note: This implementation isn't perfect, I will continue to improve/optimize
+   Note: This implementation isn't perfect; I will continue to improve/optimize
    the logic. Appreciate any input at -- https://github.com/aadv1k/swt/issues
 
-    How does it work?
-        Stroke width transform is an algorithm that is useful for extracting text from natural scenes. Making it useful for OCR, here is a brief overview of the process
-        * Convert the image to grayscale for faster and easier computation
-        * Convert the image into black and white mask, this will give us the fg and bg
-        * Apply "Connective Component Analysis" which is a graph-based algorithm that finds all the white pixels in a connected region
-        * Loop through each component, and each of it's points, cast an imaginary ray and find the next bg pixel to determine the width of the stroke
-        * Store these widths in an array and return their median. This is the "confidence" with which we can say a component is text
+   How does it work?
+   Stroke width transform is an algorithm that is useful for extracting text
+   from natural scenes, making it useful for OCR. Here's a brief overview of the process:
+   - Convert the image to grayscale for faster and easier computation.
+   - Convert the image into a black and white mask; this will give us the foreground (fg) and background (bg).
+   - Apply "Connected Component Analysis," which is a graph-based algorithm that finds all the white pixels in a connected region.
+   - Loop through each component and each of its points, cast an imaginary ray, and find the next bg pixel to determine the width of the stroke.
+   - Store these widths in an array and return their median. This is the "confidence" with which we can say a component is text.
 
-    Usage:
-        #define SWT_IMPLEMENTATION
-        #include "swt.h"
+   Usage:
+   #define SWT_IMPLEMENTATION
+   #include "swt.h"
 
-        SWTImage image = {
-            .bytes = image_data,
-            .width = width,
-            .height = height,
-            .channels = comp
-        };
+   SWTImage image = {
+       .bytes = image_data,
+       .width = width,
+       .height = height,
+       .channels = comp
+   };
 
-    For most cases you can just call the primary function, for that you first
-    need to allocate the necessary space
+   For most cases, you can just call the primary function. For that, you first need to allocate the necessary space:
 
-        SWTComponents* connectedComponents = swt_allocate_components(image.width * image.height);
-        SWTResults* swtResults = swt_allocate_results(image.width * image.height);
+    SWTComponents* connectedComponents = swt_allocate_components(image.width * image.height);
+    SWTResults* swtResults = swt_allocate_results(image.width * image.height);
 
-        swt_stroke_width_transform(&image);
+    swt_stroke_width_transform(&image);
 
-    You must then also free the allocated memory. This order is important since
-    results hold pointers to the connected components
+   You must then also free the allocated memory. This order is important since results hold pointers to the connected components:
 
-        swt_free_results(swtResults);
-        swt_free_components(connectedComponents);
+    swt_free_results(swtResults);
+    swt_free_components(connectedComponents);
 
-   Additionally, SWT exposes all the functions used for pre-processing,
-   allocation publically. Extensive documentatiomn is provided further down
+   Additionally, SWT exposes all the functions used for pre-processing and allocation publicly. Extensive documentation is provided further down.
 
-   Functions for primary transformation
-   
-        void swt_apply_stroke_width_transform(SWTImage *image, SWTComponents *components, SWTResults *results);
-        SWTResults *swt_allocate_results(int count);
-        void swt_free_results(SWTResults *results);
-        float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent);
+   Functions for primary transformation:
 
-   Functions for CCA
+    void swt_apply_stroke_width_transform(SWTImage *image, SWTComponents *components, SWTResults *results);
+    SWTResults *swt_allocate_results(int count);
+    void swt_free_results(SWTResults *results);
+    float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent);
 
-        SWTComponents *swt_allocate_components(int size);
-        void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
-        void swt_free_components(SWTComponents *components);
+   Functions for CCA:
 
-   Processing and filter functions
+    SWTComponents *swt_allocate_components(int size);
+    void swt_connected_component_analysis(SWTImage *image, SWTComponents *components);
+    void swt_free_components(SWTComponents *components);
 
-        SWTSobelNode swt_compute_sobel_for_point(SWTImage *image, SWTPoint point);
-        void swt_apply_grayscale(SWTImage *image);
-        void swt_apply_threshold(SWTImage *image, const int threshold);
- */
+   Processing and filter functions:
+
+    SWTSobelNode swt_compute_sobel_for_point(SWTImage *image, SWTPoint point);
+    void swt_apply_grayscale(SWTImage *image);
+    void swt_apply_threshold(SWTImage *image, const int threshold);
+*/
 
 #ifndef SWT_H_
 #define SWT_H_
 
 #include <assert.h>
-#include <stdbool.h>
 #include <math.h> // pow, atan2, sqrt, floor, ceil
+#include <stdbool.h>
 #include <stdint.h> // uint8_t
 #include <stdlib.h> // qsort, malloc, calloc, free
 #include <string.h> // memcpy
@@ -170,9 +168,9 @@ swt_compute_stroke_width_for_component(SWTImage *image,
 //    swt_free_components(components);
 
 SWTDEF SWTComponents *swt_allocate_components(int size);
-SWTDEF void swt_connected_component_analysis(SWTImage * image,
-                                             SWTComponents * components);
-SWTDEF void swt_free_components(SWTComponents * components);
+SWTDEF void swt_connected_component_analysis(SWTImage *image,
+                                             SWTComponents *components);
+SWTDEF void swt_free_components(SWTComponents *components);
 
 // This function computes the gradient info via sobel operator, for the pixel
 // located at (x, y)
@@ -182,320 +180,321 @@ SWTDEF void swt_free_components(SWTComponents * components);
 //      node.gradientY
 //      node.magnitude
 //      node.direction
-SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage * image,
-                                                  SWTPoint point);
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
+                                                SWTPoint point);
 
 // pre-processing apply filters destructively, eg they will resize and/or
 // modify the image->bytes
-SWTDEF void swt_apply_grayscale(SWTImage * image);
-SWTDEF void swt_apply_threshold(SWTImage * image, const int threshold);
+SWTDEF void swt_apply_grayscale(SWTImage *image);
+SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold);
 
-SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults* results);
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results);
 
 #endif // SWT_H_
 
 #ifdef SWT_IMPLEMENTATION
 
- SWTDEF void swt_connected_component_analysis(SWTImage * image,
-                                              SWTComponents * components) {
-   int width = image->width, height = image->height;
-   uint8_t *data = image->bytes;
+SWTDEF void swt_connected_component_analysis(SWTImage *image,
+                                             SWTComponents *components) {
+  int width = image->width, height = image->height;
+  uint8_t *data = image->bytes;
 
-   const int directions[8][2] = {{-1, 0},  {1, 0},  {0, -1}, {0, 1},
-                                 {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-   const int cardinals = 8;
+  const int directions[8][2] = {{-1, 0},  {1, 0},  {0, -1}, {0, 1},
+                                {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+  const int cardinals = 8;
 
-   bool *visited = (bool *)calloc(width * height, sizeof(bool));
-   SWTPoint *queue = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
+  bool *visited = (bool *)calloc(width * height, sizeof(bool));
+  SWTPoint *queue = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
 
-   for (int i = 0; i < height; i++) {
-     for (int j = 0; j < width; j++) {
-       if (data[i * width + j] == SWT_CLR_WHITE || visited[i * width + j])
-         continue;
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < width; j++) {
+      if (data[i * width + j] == SWT_CLR_WHITE || visited[i * width + j])
+        continue;
 
-       SWTComponent currentComponent;
-       currentComponent.pointCount = 0;
-       currentComponent.points =
-           (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
+      SWTComponent currentComponent;
+      currentComponent.pointCount = 0;
+      currentComponent.points =
+          (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
 
-       int qEnd = 0, qBegin = 0;
+      int qEnd = 0, qBegin = 0;
 
-       queue[qEnd] = (SWTPoint){j, i};
-       qEnd++;
-       visited[i * width + j] = true;
+      queue[qEnd] = (SWTPoint){j, i};
+      qEnd++;
+      visited[i * width + j] = true;
 
-       while (qEnd > qBegin) {
-         int x = queue[qBegin].x, y = queue[qBegin].y;
-         qBegin++;
+      while (qEnd > qBegin) {
+        int x = queue[qBegin].x, y = queue[qBegin].y;
+        qBegin++;
 
-         for (int d = 0; d < cardinals; d++) {
-           int xx = x + directions[d][0];
-           int yy = y + directions[d][1];
+        for (int d = 0; d < cardinals; d++) {
+          int xx = x + directions[d][0];
+          int yy = y + directions[d][1];
 
-           if (xx < 0 || xx >= width || yy < 0 || yy >= height)
-             continue;
-           if (data[yy * width + xx] == SWT_CLR_BLACK ||
-               visited[yy * width + xx])
-             continue;
+          if (xx < 0 || xx >= width || yy < 0 || yy >= height)
+            continue;
+          if (data[yy * width + xx] == SWT_CLR_BLACK ||
+              visited[yy * width + xx])
+            continue;
 
-           queue[qEnd] = (SWTPoint){xx, yy};
-           qEnd++;
-           visited[yy * width + xx] = true;
+          queue[qEnd] = (SWTPoint){xx, yy};
+          qEnd++;
+          visited[yy * width + xx] = true;
 
-           currentComponent.points[currentComponent.pointCount] =
-               (SWTPoint){xx, yy};
-           currentComponent.pointCount++;
-         }
-       }
+          currentComponent.points[currentComponent.pointCount] =
+              (SWTPoint){xx, yy};
+          currentComponent.pointCount++;
+        }
+      }
 
-       if (currentComponent.pointCount > 0) {
-         components->items[components->itemCount] = currentComponent;
-         components->itemCount++;
-       } else {
-         free(currentComponent.points);
-       }
-     }
-   }
+      if (currentComponent.pointCount > 0) {
+        components->items[components->itemCount] = currentComponent;
+        components->itemCount++;
+      } else {
+        free(currentComponent.points);
+      }
+    }
+  }
 
-   free(visited);
-   free(queue);
- }
+  free(visited);
+  free(queue);
+}
 
- SWTDEF void swt_apply_grayscale(SWTImage * image) {
-   assert(image->channels == 3);
+SWTDEF void swt_apply_grayscale(SWTImage *image) {
+  assert(image->channels == 3);
 
-   int imageSize = image->width * image->height;
+  int imageSize = image->width * image->height;
 
-   uint8_t *grayscaleImage = (uint8_t *)malloc(imageSize * sizeof(uint8_t));
-   SWT_IF_NO_MEMORY_EXIT(grayscaleImage);
+  uint8_t *grayscaleImage = (uint8_t *)malloc(imageSize * sizeof(uint8_t));
+  SWT_IF_NO_MEMORY_EXIT(grayscaleImage);
 
-   for (int i = 0; i < imageSize; i++) {
-     uint8_t r = image->bytes[i * 3];
-     uint8_t g = image->bytes[i * 3 + 1];
-     uint8_t b = image->bytes[i * 3 + 2];
-     grayscaleImage[i] = (uint8_t)(0.3 * r + 0.59 * g + 0.11 * b);
-   }
+  for (int i = 0; i < imageSize; i++) {
+    uint8_t r = image->bytes[i * 3];
+    uint8_t g = image->bytes[i * 3 + 1];
+    uint8_t b = image->bytes[i * 3 + 2];
+    grayscaleImage[i] = (uint8_t)(0.3 * r + 0.59 * g + 0.11 * b);
+  }
 
-   memcpy(image->bytes, grayscaleImage, imageSize * sizeof(uint8_t));
-   image->channels = 1;
-   free(grayscaleImage);
- }
+  memcpy(image->bytes, grayscaleImage, imageSize * sizeof(uint8_t));
+  image->channels = 1;
+  free(grayscaleImage);
+}
 
- SWTDEF void swt_apply_threshold(SWTImage * image, const int threshold) {
-   for (int y = 0; y < image->height; y++) {
-     for (int x = 0; x < image->width; x++) {
-       int index = (y * image->width + x) * image->channels;
-       if (image->bytes[index] > threshold) {
-         image->bytes[index] = SWT_CLR_WHITE;
-       } else {
-         image->bytes[index] = SWT_CLR_BLACK;
-       }
-     }
-   }
- }
+SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold) {
+  for (int y = 0; y < image->height; y++) {
+    for (int x = 0; x < image->width; x++) {
+      int index = (y * image->width + x) * image->channels;
+      if (image->bytes[index] > threshold) {
+        image->bytes[index] = SWT_CLR_WHITE;
+      } else {
+        image->bytes[index] = SWT_CLR_BLACK;
+      }
+    }
+  }
+}
 
 SWTComponents *swt_allocate_components(int size) {
-    SWTComponents *components = (SWTComponents *)malloc(sizeof(SWTComponents));
-    
-    if (components != NULL) {
-        components->itemCount = 0;
-        components->items = (SWTComponent *)malloc(size * sizeof(SWTComponent));
+  SWTComponents *components = (SWTComponents *)malloc(sizeof(SWTComponents));
 
-        SWT_IF_NO_MEMORY_EXIT(components->items);
-    }
+  if (components != NULL) {
+    components->itemCount = 0;
+    components->items = (SWTComponent *)malloc(size * sizeof(SWTComponent));
 
-    return components;
+    SWT_IF_NO_MEMORY_EXIT(components->items);
+  }
+
+  return components;
 }
 
 void swt_free_components(SWTComponents *components) {
-    if (components) {
-        components->items = NULL;
-        components->itemCount = 0;
-        free(components);
-    }
+  if (components) {
+    components->items = NULL;
+    components->itemCount = 0;
+    free(components);
+  }
 }
 
 SWTResults *swt_allocate_results(int count) {
-    SWTResults *results = (SWTResults *)malloc(sizeof(SWTResults));
+  SWTResults *results = (SWTResults *)malloc(sizeof(SWTResults));
 
-    if (results != NULL) {
-        results->items = (SWTResult *)malloc(sizeof(SWTResult) * count);
-        
-        if (results->items != NULL) {
-            results->itemCount = 0;
+  if (results != NULL) {
+    results->items = (SWTResult *)malloc(sizeof(SWTResult) * count);
 
-            for (int i = 0; i < count; i++) {
-                results->items[i].confidence = 0.0f;
-                results->items[i].component = NULL;
-            }
-        } else {
-            // Handle memory allocation error for items array
-            free(results);
-            return NULL;
-        }
+    if (results->items != NULL) {
+      results->itemCount = 0;
+
+      for (int i = 0; i < count; i++) {
+        results->items[i].confidence = 0.0f;
+        results->items[i].component = NULL;
+      }
+    } else {
+      // Handle memory allocation error for items array
+      free(results);
+      return NULL;
     }
+  }
 
-    return results;
+  return results;
 }
-
 
 SWTDEF void swt_free_results(SWTResults *results) {
-    if (results != NULL) {
-        free(results->items);
-        results->items = NULL;
-        results->itemCount = 0; 
-        free(results); 
-    }
+  if (results != NULL) {
+    free(results->items);
+    results->items = NULL;
+    results->itemCount = 0;
+    free(results);
+  }
 }
 
-SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage * image,
-                                                 SWTPoint point) {
-   const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
-   const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
+                                                SWTPoint point) {
+  const int sobelX[][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
+  const int sobelY[][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
 
-   SWTSobelNode node = {0};
+  SWTSobelNode node = {0};
 
-   for (int y = 0; y < 3; y++) {
-     for (int x = 0; x < 3; x++) {
-       int xx = point.x + x;
-       int yy = point.y + y;
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0; x < 3; x++) {
+      int xx = point.x + x;
+      int yy = point.y + y;
 
-       if (xx >= 0 && xx < image->width && yy >= 0 && yy < image->height) {
-         int currentIndex = yy * image->width + xx;
+      if (xx >= 0 && xx < image->width && yy >= 0 && yy < image->height) {
+        int currentIndex = yy * image->width + xx;
 
-         node.gradientX += image->bytes[currentIndex] * sobelX[y][x];
-         node.gradientY += image->bytes[currentIndex] * sobelY[y][x];
-       }
-     }
-   }
+        node.gradientX += image->bytes[currentIndex] * sobelX[y][x];
+        node.gradientY += image->bytes[currentIndex] * sobelY[y][x];
+      }
+    }
+  }
 
-   node.magnitude =
-       sqrt(node.gradientX * node.gradientX + node.gradientY * node.gradientY);
-   node.direction = atan2(node.gradientY, node.gradientX);
+  node.magnitude =
+      sqrt(node.gradientX * node.gradientX + node.gradientY * node.gradientY);
+  node.direction = atan2(node.gradientY, node.gradientX);
 
-   return node;
- }
-
+  return node;
+}
 
 int swt__qsort_compare(const void *a, const void *b) {
-    return (*(int *)a - *(int *)b);
+  return (*(int *)a - *(int *)b);
 }
 
 float swt__median(int *nums, int len) {
-    qsort(nums, len, sizeof(int), swt__qsort_compare);
+  qsort(nums, len, sizeof(int), swt__qsort_compare);
 
-    const float half = len / 2.0;
-    if (len % 2 == 0) return (nums[(int)half - 1] + nums[(int)half]) / 2.0;
+  const float half = len / 2.0;
+  if (len % 2 == 0)
+    return (nums[(int)half - 1] + nums[(int)half]) / 2.0;
 
-    return nums[(int)half];
+  return nums[(int)half];
 }
 
-float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
-    int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
-    SWT_IF_NO_MEMORY_EXIT(strokes);
+float swt_compute_stroke_width_for_component(SWTImage *image,
+                                             SWTComponent *currentComponent) {
+  int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
+  SWT_IF_NO_MEMORY_EXIT(strokes);
 
-    int strokeCount = 0;
+  int strokeCount = 0;
 
-    for (int j = 0; j < currentComponent->pointCount; j++) {
-        SWTSobelNode sobelNode = swt_compute_sobel_for_point(image, currentComponent->points[j]);
+  for (int j = 0; j < currentComponent->pointCount; j++) {
+    SWTSobelNode sobelNode =
+        swt_compute_sobel_for_point(image, currentComponent->points[j]);
 
-        int distancePositive = 0;
+    int distancePositive = 0;
 
-        int xx = currentComponent->points[j].x;
-        int yy = currentComponent->points[j].y;
+    int xx = currentComponent->points[j].x;
+    int yy = currentComponent->points[j].y;
 
-        float step_x = cos(sobelNode.direction);
-        float step_y = sin(sobelNode.direction);
+    float step_x = cos(sobelNode.direction);
+    float step_y = sin(sobelNode.direction);
 
-        for (int i = 0; i < image->width * image->height; i++) {
-            int x = xx + (int)(i * step_x);
-            int y = yy + (int)(i * step_y);
+    for (int i = 0; i < image->width * image->height; i++) {
+      int x = xx + (int)(i * step_x);
+      int y = yy + (int)(i * step_y);
 
-            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
-                break;
-            }
-            if (image->bytes[y * image->width + x] == SWT_CLR_BLACK) {
-                break;
-            }
+      if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
+        break;
+      }
+      if (image->bytes[y * image->width + x] == SWT_CLR_BLACK) {
+        break;
+      }
 
-            distancePositive++;
-        }
-
-        strokes[strokeCount] = distancePositive;
-        strokeCount++;
+      distancePositive++;
     }
 
-    float median = swt__median(strokes, strokeCount);
-    free(strokes);
+    strokes[strokeCount] = distancePositive;
+    strokeCount++;
+  }
 
-    return median;
+  float median = swt__median(strokes, strokeCount);
+  free(strokes);
+
+  return median;
 }
 
- SWTDEF void swt_apply_stroke_width_transform(
-     SWTImage * image, SWTComponents * components, SWTResults * results) {
-   swt_apply_grayscale(image);
-   swt_apply_threshold(image, SWT_THRESHOLD);
+SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
+                                             SWTComponents *components,
+                                             SWTResults *results) {
+  swt_apply_grayscale(image);
+  swt_apply_threshold(image, SWT_THRESHOLD);
 
-   swt_connected_component_analysis(image, components);
+  swt_connected_component_analysis(image, components);
 
-   for (int i = 0; i < components->itemCount; i++) {
-     results->items[i].component = &components->items[i];
-     results->items[i].confidence =
-         swt_compute_stroke_width_for_component(image, &components->items[i]);
-     results->itemCount++;
-   }
-
+  for (int i = 0; i < components->itemCount; i++) {
+    results->items[i].component = &components->items[i];
+    results->items[i].confidence =
+        swt_compute_stroke_width_for_component(image, &components->items[i]);
+    results->itemCount++;
+  }
 }
 
-SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults* results) {
-    if (image == NULL || results == NULL) {
-        return;
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results) {
+  if (image == NULL || results == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < results->itemCount; i++) {
+    SWTComponent *component = results->items[i].component;
+    if (component == NULL || results->items[i].confidence >= 3) {
+      continue;
     }
 
-    for (int i = 0; i < results->itemCount; i++) {
-        SWTComponent *component = results->items[i].component;
-        if (component == NULL || results->items[i].confidence >= 3) {
-            continue;
-        }
+    for (int j = 0; j < component->pointCount; j++) {
+      SWTPoint point = component->points[j];
 
-
-        for (int j = 0; j < component->pointCount; j++) {
-            SWTPoint point = component->points[j];
-
-            if (point.x >= 0 && point.x < image->width && point.y >= 0 && point.y < image->height) {
-                int index = (point.y * image->width + point.x) * image->channels;
-                image->bytes[index] = 128;
-            }
-        }
+      if (point.x >= 0 && point.x < image->width && point.y >= 0 &&
+          point.y < image->height) {
+        int index = (point.y * image->width + point.x) * image->channels;
+        image->bytes[index] = 128;
+      }
     }
+  }
 }
 
 #endif // SWT_IMPLEMENTATION
 
-  /********************************************************************************
-    This is free and unencumbered software released into the public domain.
+/********************************************************************************
+  This is free and unencumbered software released into the public domain.
 
-    Anyone is free to copy, modify, publish, use, compile, sell, or
-    distribute this software, either in source code form or as a compiled
-    binary, for any purpose, commercial or non-commercial, and by any
-    means.
+  Anyone is free to copy, modify, publish, use, compile, sell, or
+  distribute this software, either in source code form or as a compiled
+  binary, for any purpose, commercial or non-commercial, and by any
+  means.
 
-    In jurisdictions that recognize copyright laws, the author or authors
-    of this software dedicate any and all copyright interest in the
-    software to the public domain. We make this dedication for the benefit
-    of the public at large and to the detriment of our heirs and
-    successors. We intend this dedication to be an overt act of
-    relinquishment in perpetuity of all present and future rights to this
-    software under copyright law.
+  In jurisdictions that recognize copyright laws, the author or authors
+  of this software dedicate any and all copyright interest in the
+  software to the public domain. We make this dedication for the benefit
+  of the public at large and to the detriment of our heirs and
+  successors. We intend this dedication to be an overt act of
+  relinquishment in perpetuity of all present and future rights to this
+  software under copyright law.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-    OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-    ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-    OTHER DEALINGS IN THE SOFTWARE.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  OTHER DEALINGS IN THE SOFTWARE.
 
-    For more information, please refer to <https://unlicense.org>
+  For more information, please refer to <https://unlicense.org>
 
-  ********************************************************************************/
+********************************************************************************/
