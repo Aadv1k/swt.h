@@ -487,19 +487,28 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
   // This yields desirable results
   // int otsuThreshold = swt_compute_otsu_threshold(image);
 
+  SWTImage binaryImage;
+  binaryImage.width = image->width;
+  binaryImage.height = image->height;
+  binaryImage.channels = image->channels;
+  binaryImage.bytes = (uint8_t *)malloc(sizeof(uint8_t) * image->width * image->height * image->channels);
+  memcpy(binaryImage.bytes, image->bytes, sizeof(uint8_t) * image->width * image->height * image->channels);
 
   // threshold is inverted such that WHITE is the foreground
-  swt_apply_threshold(image, SWT_THRESHOLD);
+  swt_apply_threshold(&binaryImage, SWT_THRESHOLD);
 
-  swt_connected_component_analysis(image, components);
+  swt_connected_component_analysis(&binaryImage, components);
 
   for (int i = 0; i < components->itemCount; i++) {
     results->items[i].component = &components->items[i];
     results->items[i].confidence =
-        swt_compute_stroke_width_for_component(image, &components->items[i]);
+        swt_compute_stroke_width_for_component(&binaryImage, &components->items[i]);
     results->itemCount++;
   }
+
+  free(binaryImage.bytes);
 }
+
 
 SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results, const int confidenceThreshold) {
   if (image == NULL || results == NULL) {
@@ -519,7 +528,7 @@ SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results, co
       if (point.x >= 0 && point.x < image->width && point.y >= 0 &&
           point.y < image->height) {
         int index = (point.y * image->width + point.x) * image->channels;
-        image->bytes[index] = 128;
+        image->bytes[index] = 28;
       }
     }
   }
