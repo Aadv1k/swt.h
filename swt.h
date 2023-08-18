@@ -3,9 +3,13 @@
     Note: This implementation isn't perfect, I will continue to improve/optimize
    the logic. Appreciate any input at -- https://github.com/aadv1k/swt/issues
 
-    Reference:
-        https://en.wikipedia.org/wiki/Connected-component_labeling.
-        https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/1509.pdf
+    How does it work?
+        Stroke width transform is an algorithm that is useful for extracting text from natural scenes. Making it useful for OCR, here is a brief overview of the process
+        * Convert the image to grayscale for faster and easier computation
+        * Convert the image into black and white mask, this will give us the fg and bg
+        * Apply "Connective Component Analysis" which is a graph-based algorithm that finds all the white pixels in a connected region
+        * Loop through each component, and each of it's points, cast an imaginary ray and find the next bg pixel to determine the width of the stroke
+        * Store these widths in an array and return their median. This is the "confidence" with which we can say a component is text
 
     Usage:
         #define SWT_IMPLEMENTATION
