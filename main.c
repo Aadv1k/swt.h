@@ -24,15 +24,13 @@ int main(int argc, char** argv) {
     }
 
     SWTImage image = { image_data, width, height, channels };
-    SWTComponents *components = swt_allocate_components(image.width * image.height);
-    SWTResults *results = swt_allocate_results(image.width * image.height);
+    SWTData *data = swt_allocate(width * height);
 
-    swt_apply_stroke_width_transform(&image, components, results);
+    swt_apply_stroke_width_transform(&image, data->components, data->results);
 
-    swt_visualize_text_on_image(&image, results, /*confidenceThreshold*/ 20);
+    swt_visualize_text_on_image(&image, data->results, /*confidenceThreshold*/ 4);
 
-    swt_free_components(components);
-    swt_free_results(results);
+    swt_free(data);
 
     if (!stbi_write_jpg(output_filename, image.width, image.height, image.channels, image.bytes, 100)) {
         fprintf(stderr, "ERROR: unable to write image\n");

@@ -32,7 +32,7 @@ CCA_SmallImage_hasExpectedComponents(const MunitParameter params[],
   };
 
   SWTComponents *components =
-      swt_allocate_components(image.width * image.height);
+      swt__allocate_components(image.width * image.height);
 
   swt_apply_grayscale(&image);
   swt_apply_threshold(&image, 128);
@@ -66,7 +66,7 @@ CCA_MediumImage_hasExpectedComponents(const MunitParameter params[],
   };
 
   SWTComponents *components =
-      swt_allocate_components(image.width * image.height);
+      swt__allocate_components(image.width * image.height);
 
   swt_apply_grayscale(&image);
   swt_apply_threshold(&image, 128);

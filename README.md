@@ -24,19 +24,18 @@ The documentation for functions is also contained within the header file
 
 Here is how you would use this with stb
 
-```c
+```C
   /* ... */
 
     SWTImage image = { image_data, width, height, channels };
-    SWTComponents *components = swt_allocate_components(image.width * image.height);
-    SWTResults *results = swt_allocate_results(image.width * image.height);
+    SWTData *data = swt_allocate(width * height);
 
-    swt_apply_stroke_width_transform(&image, components, results);
+    swt_apply_stroke_width_transform(&image, data->components, data->results);
     
-    swt_visualize_text_on_image(&image, results);
+    // optionally visualize the points on the image
+    swt_visualize_text_on_image(&image, data->results, 4);
 
-    swt_free_components(components);
-    swt_free_results(results);
+    swt_free(data);
 
   /* ... */
 ```
