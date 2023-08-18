@@ -171,7 +171,7 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
 // loops through each point in the given components, calculates their gradient
 // direction and extracts a stroke width and returns the median of all the
 // widths in the component
-SWTDEF float
+SWTDEF int
 swt_compute_stroke_width_for_component(SWTImage *image,
                                        SWTComponent *currentComponent);
 
@@ -472,12 +472,13 @@ static float swt__median(int *nums, int len) {
   return nums[(int)half];
 }
 
-SWTDEF float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
+SWTDEF int swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
+    SWT_ASSERT(image->channels == 1 && "swt_compute_stroke_width_for_component expects a BINARY image");
     int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
     SWT_IF_NO_MEMORY_EXIT(strokes);
 
     int strokeCount = 0;
-    int maxDistance = 100;
+    int maxDistance = (int)(image->width * image->height) / 4;
 
     for (int j = 0; j < currentComponent->pointCount; j++) {
         SWTSobelNode sobelNode = swt_compute_sobel_for_point(image, currentComponent->points[j]);
@@ -508,7 +509,7 @@ SWTDEF float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponen
         strokeCount++;
     }
 
-    float median = swt__median(strokes, strokeCount);
+    int median = swt__median(strokes, strokeCount);
     free(strokes);
 
     return median;
@@ -518,29 +519,41 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
                                              SWTComponents *components,
                                              SWTResults *results) {
   swt_apply_grayscale(image);
-  // This yields desirable results
-  // int otsuThreshold = swt_compute_otsu_threshold(image);
 
-  SWTImage binaryImage;
-  binaryImage.width = image->width;
-  binaryImage.height = image->height;
-  binaryImage.channels = image->channels;
-  binaryImage.bytes = (uint8_t *)malloc(sizeof(uint8_t) * image->width * image->height * image->channels);
-  memcpy(binaryImage.bytes, image->bytes, sizeof(uint8_t) * image->width * image->height * image->channels);
+  /* This makes the logic for visualization needlessly complex since gray and black don't contrast well
+    SWTImage binaryImage;
+    binaryImage.width = image->width;
+    binaryImage.height = image->height;
+    binaryImage.channels = image->channels;
+    binaryImage.bytes = (uint8_t *)malloc(sizeof(uint8_t) * image->width * image->height * image->channels);
+    memcpy(binaryImage.bytes, image->bytes, sizeof(uint8_t) * image->width * image->height * image->channels);
+  */
 
   // threshold is inverted such that WHITE is the foreground
-  swt_apply_threshold(&binaryImage, SWT_THRESHOLD);
+  swt_apply_threshold(image, SWT_THRESHOLD);
 
-  swt_connected_component_analysis(&binaryImage, components);
+  swt_connected_component_analysis(image, components);
 
   for (int i = 0; i < components->itemCount; i++) {
     results->items[i].component = &components->items[i];
     results->items[i].confidence =
-        swt_compute_stroke_width_for_component(&binaryImage, &components->items[i]);
+        swt_compute_stroke_width_for_component(image, &components->items[i]);
+    //printf("confidence for component#%d is %f\n", i, results->items[i].confidence);
     results->itemCount++;
   }
 
-  free(binaryImage.bytes);
+  // free(binaryImage.bytes);
+}
+
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+static int swt__confidence_sum(SWTResults *results) {
+    int sum = 0;
+    for (int i = 0; i < results->itemCount; i++) {
+        sum += results->items[i].confidence;
+    }
+    return sum;
 }
 
 
@@ -551,19 +564,19 @@ SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results, co
 
   for (int i = 1; i < results->itemCount; i++) {
     SWTComponent *component = results->items[i].component;
+    int confidence = results->items[i].confidence;
 
-    if (component == NULL || results->items[i].confidence > confidenceThreshold) {
-        continue;
+    if (confidenceThreshold < confidence) continue;
+
+    if (component == NULL) {
+      continue;
     }
 
     for (int j = 0; j < component->pointCount; j++) {
       SWTPoint point = component->points[j];
 
-      if (point.x >= 0 && point.x < image->width && point.y >= 0 &&
-          point.y < image->height) {
-        int index = (point.y * image->width + point.x) * image->channels;
-        image->bytes[index] = 28;
-      }
+      int index = (point.y * image->width + point.x) * image->channels;
+      image->bytes[index] = 128; 
     }
   }
 }
