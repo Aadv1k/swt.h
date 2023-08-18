@@ -50,6 +50,11 @@ this will produce the following output
 | <img alt="original image" width="250" src="./thirdparty/test2.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/test2_output.jpg" /> |
 
 
+| Original image                            | Detected text (Highlighted in Gray)            |
+|-------------------------------------------|------------------------------------------------|
+| <img alt="original image" width="250" src="./thirdparty/freedom.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/freedom_output.jpg" /> |
+
+
 ## Tests
 
 The tests are written using [µnit](https://nemequ.github.io/munit/) find them at [`tests/`](./tests)

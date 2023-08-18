@@ -279,17 +279,20 @@ SWTDEF void swt_apply_grayscale(SWTImage *image) {
   free(grayscaleImage);
 }
 
+// TODO: this will break black on white
 SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold) {
-  for (int y = 0; y < image->height; y++) {
-    for (int x = 0; x < image->width; x++) {
-      int index = (y * image->width + x) * image->channels;
-      if (image->bytes[index] > threshold) {
-        image->bytes[index] = SWT_CLR_WHITE;
-      } else {
-        image->bytes[index] = SWT_CLR_BLACK;
-      }
+    for (int y = 0; y < image->height; y++) {
+        for (int x = 0; x < image->width; x++) {
+            int index = (y * image->width + x) * image->channels;
+            int pixelValue = image->bytes[index];
+
+            if (pixelValue <= threshold) {
+                image->bytes[index] = SWT_CLR_WHITE;
+            } else {
+                image->bytes[index] = SWT_CLR_BLACK;
+            }
+        }
     }
-  }
 }
 
 SWTComponents *swt_allocate_components(int size) {
@@ -373,6 +376,56 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
   return node;
 }
 
+
+uint8_t swt_compute_otsu_threshold(SWTImage *image) {
+    if (image == NULL) {
+        return 0;
+    }
+
+    int histogram[256] = {0};
+    int totalPixels = image->width * image->height;
+
+    // Calculate histogram
+    for (int i = 0; i < totalPixels; i++) {
+        int pixelValue = image->bytes[i];
+        histogram[pixelValue]++;
+    }
+
+    float sum = 0;
+    for (int i = 0; i < 256; i++) {
+        sum += i * histogram[i];
+    }
+
+    int sumB = 0;
+    int wB = 0;
+    int wF = 0;
+
+    float maxVariance = 0;
+    uint8_t threshold = 0;
+
+    for (int t = 0; t < 256; t++) {
+        wB += histogram[t];
+        if (wB == 0) continue;
+
+        wF = totalPixels - wB;
+        if (wF == 0) break;
+
+        sumB += t * histogram[t];
+        float meanB = (float)sumB / wB;
+        float meanF = (float)(sum - sumB) / wF;
+
+        float varianceBetween = wB * wF * (meanB - meanF) * (meanB - meanF);
+
+        if (varianceBetween > maxVariance) {
+            maxVariance = varianceBetween;
+            threshold = t;
+        }
+    }
+
+    return threshold;
+}
+
+
 int swt__qsort_compare(const void *a, const void *b) {
   return (*(int *)a - *(int *)b);
 }
@@ -387,53 +440,57 @@ float swt__median(int *nums, int len) {
   return nums[(int)half];
 }
 
-float swt_compute_stroke_width_for_component(SWTImage *image,
-                                             SWTComponent *currentComponent) {
-  int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
-  SWT_IF_NO_MEMORY_EXIT(strokes);
+float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
+    int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
+    SWT_IF_NO_MEMORY_EXIT(strokes);
 
-  int strokeCount = 0;
+    int strokeCount = 0;
+    int maxDistance = 100;
 
-  for (int j = 0; j < currentComponent->pointCount; j++) {
-    SWTSobelNode sobelNode =
-        swt_compute_sobel_for_point(image, currentComponent->points[j]);
+    for (int j = 0; j < currentComponent->pointCount; j++) {
+        SWTSobelNode sobelNode = swt_compute_sobel_for_point(image, currentComponent->points[j]);
 
-    int distancePositive = 0;
+        int distancePositive = 0;
 
-    int xx = currentComponent->points[j].x;
-    int yy = currentComponent->points[j].y;
+        int xx = currentComponent->points[j].x;
+        int yy = currentComponent->points[j].y;
 
-    float step_x = cos(sobelNode.direction);
-    float step_y = sin(sobelNode.direction);
+        float step_x = cos(sobelNode.direction);
+        float step_y = sin(sobelNode.direction);
 
-    for (int i = 0; i < image->width * image->height; i++) {
-      int x = xx + (int)(i * step_x);
-      int y = yy + (int)(i * step_y);
+        for (int i = 0; i < maxDistance; i++) {
+            int x = xx + (int)(i * step_x);
+            int y = yy + (int)(i * step_y);
 
-      if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
-        break;
-      }
-      if (image->bytes[y * image->width + x] == SWT_CLR_BLACK) {
-        break;
-      }
+            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
+                break;
+            }
+            if (image->bytes[y * image->width + x] == SWT_CLR_BLACK) {
+                break;
+            }
 
-      distancePositive++;
+            distancePositive++;
+        }
+
+        strokes[strokeCount] = distancePositive;
+        strokeCount++;
     }
 
-    strokes[strokeCount] = distancePositive;
-    strokeCount++;
-  }
+    float median = swt__median(strokes, strokeCount);
+    free(strokes);
 
-  float median = swt__median(strokes, strokeCount);
-  free(strokes);
-
-  return median;
+    return median;
 }
 
 SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
                                              SWTComponents *components,
                                              SWTResults *results) {
   swt_apply_grayscale(image);
+  // This yields desirable results
+  // int otsuThreshold = swt_compute_otsu_threshold(image);
+
+
+  // threshold is inverted such that WHITE is the foreground
   swt_apply_threshold(image, SWT_THRESHOLD);
 
   swt_connected_component_analysis(image, components);
@@ -451,9 +508,10 @@ SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results) {
     return;
   }
 
-  for (int i = 0; i < results->itemCount; i++) {
+  for (int i = 1; i < results->itemCount; i++) {
     SWTComponent *component = results->items[i].component;
-    if (component == NULL || results->items[i].confidence >= 3) {
+
+    if (component == NULL || results->items[i].confidence <= 2) {
       continue;
     }
 
