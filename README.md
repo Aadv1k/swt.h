@@ -45,14 +45,11 @@ this will produce the following output
 
 ## Gallery
 
-| Original image                            | Detected text (Highlighted in Gray)            |
-|-------------------------------------------|------------------------------------------------|
-| <img alt="original image" width="250" src="./thirdparty/test2.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/test2_output.jpg" /> |
-
-
-| Original image                            | Detected text (Highlighted in Gray)            |
-|-------------------------------------------|------------------------------------------------|
+| Original image                                                          | Detected text (Highlighted in Gray)                                                    |
+|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| <img alt="original image" width="250" src="./thirdparty/test2.jpg" />   | <img alt="detected text in gray" width="250"  src="./thirdparty/test2_output.jpg" />   |
 | <img alt="original image" width="250" src="./thirdparty/freedom.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/freedom_output.jpg" /> |
+| <img alt="original image" width="250" src="./thirdparty/test3.jpg" /> | <img alt="detected text in gray" width="250"  src="./thirdparty/test3_output.jpg" /> |
 
 
 ## Tests

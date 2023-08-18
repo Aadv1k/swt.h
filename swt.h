@@ -188,7 +188,7 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
 SWTDEF void swt_apply_grayscale(SWTImage *image);
 SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold);
 
-SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results);
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results, const int confidenceThreshold);
 
 #endif // SWT_H_
 
@@ -280,19 +280,17 @@ SWTDEF void swt_apply_grayscale(SWTImage *image) {
 }
 
 // TODO: this will break black on white
-SWTDEF void swt_apply_threshold(SWTImage *image, const int threshold) {
-    for (int y = 0; y < image->height; y++) {
-        for (int x = 0; x < image->width; x++) {
-            int index = (y * image->width + x) * image->channels;
-            int pixelValue = image->bytes[index];
-
-            if (pixelValue <= threshold) {
-                image->bytes[index] = SWT_CLR_WHITE;
-            } else {
-                image->bytes[index] = SWT_CLR_BLACK;
-            }
-        }
-    }
+ SWTDEF void swt_apply_threshold(SWTImage * image, const int threshold) {
+   for (int y = 0; y < image->height; y++) {
+     for (int x = 0; x < image->width; x++) {
+       int index = (y * image->width + x) * image->channels;
+       if (image->bytes[index] > threshold) {
+         image->bytes[index] = SWT_CLR_BLACK;
+       } else {
+         image->bytes[index] = SWT_CLR_WHITE;
+       }
+     }
+   }
 }
 
 SWTComponents *swt_allocate_components(int size) {
@@ -377,7 +375,7 @@ SWTDEF SWTSobelNode swt_compute_sobel_for_point(SWTImage *image,
 }
 
 
-uint8_t swt_compute_otsu_threshold(SWTImage *image) {
+SWTDEF uint8_t swt_compute_otsu_threshold(SWTImage *image) {
     if (image == NULL) {
         return 0;
     }
@@ -426,11 +424,11 @@ uint8_t swt_compute_otsu_threshold(SWTImage *image) {
 }
 
 
-int swt__qsort_compare(const void *a, const void *b) {
+SWTDEF int swt__qsort_compare(const void *a, const void *b) {
   return (*(int *)a - *(int *)b);
 }
 
-float swt__median(int *nums, int len) {
+SWTDEF float swt__median(int *nums, int len) {
   qsort(nums, len, sizeof(int), swt__qsort_compare);
 
   const float half = len / 2.0;
@@ -440,7 +438,7 @@ float swt__median(int *nums, int len) {
   return nums[(int)half];
 }
 
-float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
+SWTDEF float swt_compute_stroke_width_for_component(SWTImage *image, SWTComponent *currentComponent) {
     int *strokes = (int *)malloc(sizeof(int) * currentComponent->pointCount);
     SWT_IF_NO_MEMORY_EXIT(strokes);
 
@@ -503,7 +501,7 @@ SWTDEF void swt_apply_stroke_width_transform(SWTImage *image,
   }
 }
 
-SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results) {
+SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results, const int confidenceThreshold) {
   if (image == NULL || results == NULL) {
     return;
   }
@@ -511,8 +509,8 @@ SWTDEF void swt_visualize_text_on_image(SWTImage *image, SWTResults *results) {
   for (int i = 1; i < results->itemCount; i++) {
     SWTComponent *component = results->items[i].component;
 
-    if (component == NULL || results->items[i].confidence <= 2) {
-      continue;
+    if (component == NULL || results->items[i].confidence > confidenceThreshold) {
+        continue;
     }
 
     for (int j = 0; j < component->pointCount; j++) {
