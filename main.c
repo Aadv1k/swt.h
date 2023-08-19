@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 
     swt_apply_stroke_width_transform(&image, data->components, data->results);
 
-    swt_visualize_text_on_image(&image, data->results, /*confidenceThreshold*/ 4);
+    swt_visualize_text_on_image(&image, data->results, /*confidenceThreshold*/ 2);
 
     swt_free(data);
 

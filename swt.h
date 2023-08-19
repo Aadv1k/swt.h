@@ -218,9 +218,16 @@ SWTDEF void swt_connected_component_analysis(SWTImage *image,
   int width = image->width, height = image->height;
   uint8_t *data = image->bytes;
 
+  /*
   const int directions[8][2] = {{-1, 0},  {1, 0},  {0, -1}, {0, 1},
                                 {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
   const int cardinals = 8;
+
+  */
+
+    const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    const int cardinals = 4;
+
 
   int *visited = (int *)calloc(width * height, sizeof(int));
   SWTPoint *queue = (SWTPoint *)malloc(width * height * sizeof(SWTPoint));
